@@ -1,0 +1,815 @@
+﻿{
+	"info": {
+		"_postman_id": "elasticsearch-demo-2025",
+		"name": "Elasticsearch Level II - Complete Demo",
+		"description": "Complete Postman collection for Elasticsearch Level II demonstration\n\nTopics:\n- Index Management\n- Mappings\n- Document Indexing\n- Text Analysis\n- Query DSL\n- Aggregations\n- Sorting & Pagination",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "1. Connection & Health",
+			"item": [
+				{
+					"name": "Check Elasticsearch Status",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{es_host}}",
+							"host": ["{{es_host}}"]
+						}
+					}
+				},
+				{
+					"name": "List All Indexes",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{es_host}}/_cat/indices?v",
+							"host": ["{{es_host}}"],
+							"path": ["_cat", "indices"],
+							"query": [{"key": "v", "value": null}]
+						}
+					}
+				},
+				{
+					"name": "Cluster Health",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{es_host}}/_cluster/health",
+							"host": ["{{es_host}}"],
+							"path": ["_cluster", "health"]
+						}
+					}
+				},
+				{
+					"name": "Delete All Demo Data",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{es_host}}/products,articles",
+							"host": ["{{es_host}}"],
+							"path": ["products,articles"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "2. Index Management",
+			"item": [
+				{
+					"name": "Create Products Index",
+					"request": {
+						"method": "PUT",
+						"header": [{"key": "Content-Type", "value": "application/json"}],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"settings\": {\n    \"number_of_shards\": 1,\n    \"number_of_replicas\": 1,\n    \"analysis\": {\n      \"analyzer\": {\n        \"custom_analyzer\": {\n          \"type\": \"custom\",\n          \"tokenizer\": \"standard\",\n          \"filter\": [\"lowercase\", \"stop\"]\n        }\n      }\n    }\n  },\n  \"mappings\": {\n    \"properties\": {\n      \"id\": {\"type\": \"keyword\"},\n      \"name\": {\n        \"type\": \"text\",\n        \"fields\": {\n          \"keyword\": {\"type\": \"keyword\"}\n        }\n      },\n      \"description\": {\"type\": \"text\"},\n      \"price\": {\"type\": \"scaled_float\", \"scaling_factor\": 100},\n      \"category\": {\"type\": \"keyword\"},\n      \"stock\": {\"type\": \"integer\"},\n      \"tags\": {\"type\": \"keyword\"},\n      \"createdDate\": {\"type\": \"date\"},\n      \"isActive\": {\"type\": \"boolean\"}\n    }\n  }\n}"
+						},
+						"url": {
+							"raw": "{{es_host}}/products",
+							"host": ["{{es_host}}"],
+							"path": ["products"]
+						}
+					}
+				},
+				{
+					"name": "Create Articles Index",
+					"request": {
+						"method": "PUT",
+						"header": [{"key": "Content-Type", "value": "application/json"}],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"settings\": {\n    \"number_of_shards\": 1,\n    \"number_of_replicas\": 1\n  },\n  \"mappings\": {\n    \"properties\": {\n      \"id\": {\"type\": \"keyword\"},\n      \"title\": {\n        \"type\": \"text\",\n        \"fields\": {\n          \"keyword\": {\"type\": \"keyword\"}\n        }\n      },\n      \"content\": {\"type\": \"text\"},\n      \"author\": {\"type\": \"keyword\"},\n      \"keywords\": {\"type\": \"keyword\"},\n      \"publishDate\": {\"type\": \"date\"},\n      \"viewCount\": {\"type\": \"integer\"}\n    }\n  }\n}"
+						},
+						"url": {
+							"raw": "{{es_host}}/articles",
+							"host": ["{{es_host}}"],
+							"path": ["articles"]
+						}
+					}
+				},
+				{
+					"name": "Get Products Mapping",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{es_host}}/products/_mapping",
+							"host": ["{{es_host}}"],
+							"path": ["products", "_mapping"]
+						}
+					}
+				},
+				{
+					"name": "Get Index Settings",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{es_host}}/products/_settings",
+							"host": ["{{es_host}}"],
+							"path": ["products", "_settings"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "3. Document Indexing",
+			"item": [
+				{
+					"name": "Index Single Product",
+					"request": {
+						"method": "POST",
+						"header": [{"key": "Content-Type", "value": "application/json"}],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"id\": \"1\",\n  \"name\": \"Laptop Dell XPS 15\",\n  \"description\": \"High-performance laptop with Intel Core i7 processor and 16GB RAM\",\n  \"price\": 1499.99,\n  \"category\": \"Electronics\",\n  \"stock\": 25,\n  \"tags\": [\"laptop\", \"computer\", \"dell\", \"premium\"],\n  \"createdDate\": \"2025-11-25T10:00:00Z\",\n  \"isActive\": true\n}"
+						},
+						"url": {
+							"raw": "{{es_host}}/products/_doc/1?refresh=wait_for",
+							"host": ["{{es_host}}"],
+							"path": ["products", "_doc", "1"],
+							"query": [{"key": "refresh", "value": "wait_for"}]
+						}
+					}
+				},
+				{
+					"name": "Bulk Index Products",
+					"request": {
+						"method": "POST",
+						"header": [{"key": "Content-Type", "value": "application/x-ndjson"}],
+						"body": {
+							"mode": "raw",
+							"raw": "{\"index\":{\"_id\":\"2\"}}\n{\"id\":\"2\",\"name\":\"iPhone 15 Pro\",\"description\":\"Latest Apple smartphone with A17 Pro chip and advanced camera system\",\"price\":999.99,\"category\":\"Electronics\",\"stock\":50,\"tags\":[\"smartphone\",\"apple\",\"iphone\",\"mobile\"],\"createdDate\":\"2025-11-25T10:00:00Z\",\"isActive\":true}\n{\"index\":{\"_id\":\"3\"}}\n{\"id\":\"3\",\"name\":\"Samsung Galaxy S24\",\"description\":\"Powerful Android phone with AI features and excellent display\",\"price\":899.99,\"category\":\"Electronics\",\"stock\":40,\"tags\":[\"smartphone\",\"samsung\",\"android\",\"galaxy\"],\"createdDate\":\"2025-11-25T10:00:00Z\",\"isActive\":true}\n{\"index\":{\"_id\":\"4\"}}\n{\"id\":\"4\",\"name\":\"Sony WH-1000XM5\",\"description\":\"Premium noise-cancelling wireless headphones\",\"price\":399.99,\"category\":\"Audio\",\"stock\":30,\"tags\":[\"headphones\",\"sony\",\"wireless\",\"noise-cancelling\"],\"createdDate\":\"2025-11-25T10:00:00Z\",\"isActive\":true}\n{\"index\":{\"_id\":\"5\"}}\n{\"id\":\"5\",\"name\":\"iPad Pro 12.9\",\"description\":\"Professional tablet with M2 chip and Liquid Retina display\",\"price\":1099.99,\"category\":\"Electronics\",\"stock\":20,\"tags\":[\"tablet\",\"apple\",\"ipad\",\"professional\"],\"createdDate\":\"2025-11-25T10:00:00Z\",\"isActive\":true}\n{\"index\":{\"_id\":\"6\"}}\n{\"id\":\"6\",\"name\":\"MacBook Air M3\",\"description\":\"Ultra-thin laptop with powerful M3 chip and all-day battery life\",\"price\":1299.99,\"category\":\"Electronics\",\"stock\":15,\"tags\":[\"laptop\",\"apple\",\"macbook\",\"lightweight\"],\"createdDate\":\"2025-11-25T10:00:00Z\",\"isActive\":true}\n{\"index\":{\"_id\":\"7\"}}\n{\"id\":\"7\",\"name\":\"Logitech MX Master 3S\",\"description\":\"Ergonomic wireless mouse for productivity\",\"price\":99.99,\"category\":\"Accessories\",\"stock\":45,\"tags\":[\"mouse\",\"logitech\",\"wireless\",\"ergonomic\"],\"createdDate\":\"2025-11-25T10:00:00Z\",\"isActive\":true}\n{\"index\":{\"_id\":\"8\"}}\n{\"id\":\"8\",\"name\":\"Bose QuietComfort Earbuds II\",\"description\":\"True wireless earbuds with world-class noise cancellation\",\"price\":279.99,\"category\":\"Audio\",\"stock\":35,\"tags\":[\"earbuds\",\"bose\",\"wireless\",\"noise-cancelling\"],\"createdDate\":\"2025-11-25T10:00:00Z\",\"isActive\":true}\n{\"index\":{\"_id\":\"9\"}}\n{\"id\":\"9\",\"name\":\"USB-C Cable 3-Pack\",\"description\":\"Fast charging USB-C cables, 6ft length\",\"price\":19.99,\"category\":\"Accessories\",\"stock\":100,\"tags\":[\"cable\",\"usb-c\",\"charging\",\"fast-charge\"],\"createdDate\":\"2025-11-25T10:00:00Z\",\"isActive\":true}\n{\"index\":{\"_id\":\"10\"}}\n{\"id\":\"10\",\"name\":\"Samsung 27 inch 4K Monitor\",\"description\":\"Ultra HD monitor with HDR support for professionals\",\"price\":449.99,\"category\":\"Electronics\",\"stock\":12,\"tags\":[\"monitor\",\"samsung\",\"4k\",\"display\"],\"createdDate\":\"2025-11-25T10:00:00Z\",\"isActive\":true}\n"
+						},
+						"url": {
+							"raw": "{{es_host}}/products/_bulk?refresh=wait_for",
+							"host": ["{{es_host}}"],
+							"path": ["products", "_bulk"],
+							"query": [{"key": "refresh", "value": "wait_for"}]
+						}
+					}
+				},
+				{
+					"name": "Bulk Index Articles",
+					"request": {
+						"method": "POST",
+						"header": [{"key": "Content-Type", "value": "application/x-ndjson"}],
+						"body": {
+							"mode": "raw",
+							"raw": "{\"index\":{\"_id\":\"1\"}}\n{\"id\":\"1\",\"title\":\"Introduction to Elasticsearch\",\"content\":\"Elasticsearch is a distributed, RESTful search and analytics engine capable of addressing a growing number of use cases. As the heart of the Elastic Stack, it centrally stores your data for lightning fast search, fine‑tuned relevancy, and powerful analytics that scale with ease.\",\"author\":\"Tech Writer\",\"keywords\":[\"elasticsearch\",\"basics\",\"introduction\"],\"publishDate\":\"2025-11-20T10:00:00Z\",\"viewCount\":1500}\n{\"index\":{\"_id\":\"2\"}}\n{\"id\":\"2\",\"title\":\"Advanced Query DSL Techniques\",\"content\":\"Learn how to write complex queries using bool queries, nested queries, and function score queries. Master the art of relevance tuning and understand how Elasticsearch calculates scores for your search results.\",\"author\":\"Search Expert\",\"keywords\":[\"query-dsl\",\"advanced\",\"scoring\"],\"publishDate\":\"2025-11-21T10:00:00Z\",\"viewCount\":2300}\n{\"index\":{\"_id\":\"3\"}}\n{\"id\":\"3\",\"title\":\"Text Analysis Deep Dive\",\"content\":\"Understanding analyzers, tokenizers, and character filters is crucial for effective full-text search. This article explores standard, custom, and language-specific analyzers with practical examples.\",\"author\":\"Data Scientist\",\"keywords\":[\"text-analysis\",\"analyzers\",\"tokenizers\"],\"publishDate\":\"2025-11-22T10:00:00Z\",\"viewCount\":1800}\n{\"index\":{\"_id\":\"4\"}}\n{\"id\":\"4\",\"title\":\"Aggregations and Analytics\",\"content\":\"Use aggregations to perform real-time analytics on your data. From simple metrics to complex bucket aggregations, learn how to extract insights from millions of documents in milliseconds.\",\"author\":\"Analytics Pro\",\"keywords\":[\"aggregations\",\"analytics\",\"metrics\"],\"publishDate\":\"2025-11-23T10:00:00Z\",\"viewCount\":2100}\n{\"index\":{\"_id\":\"5\"}}\n{\"id\":\"5\",\"title\":\"Performance Optimization Tips\",\"content\":\"Optimize your Elasticsearch cluster for better performance. Learn about index settings, shard allocation, caching strategies, and query optimization techniques that can dramatically improve response times.\",\"author\":\"Performance Engineer\",\"keywords\":[\"performance\",\"optimization\",\"tuning\"],\"publishDate\":\"2025-11-24T10:00:00Z\",\"viewCount\":2800}\n"
+						},
+						"url": {
+							"raw": "{{es_host}}/articles/_bulk?refresh=wait_for",
+							"host": ["{{es_host}}"],
+							"path": ["articles", "_bulk"],
+							"query": [{"key": "refresh", "value": "wait_for"}]
+						}
+					}
+				},
+				{
+					"name": "Update Product",
+					"request": {
+						"method": "POST",
+						"header": [{"key": "Content-Type", "value": "application/json"}],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"doc\": {\n    \"price\": 1399.99,\n    \"stock\": 20\n  }\n}"
+						},
+						"url": {
+							"raw": "{{es_host}}/products/_update/1",
+							"host": ["{{es_host}}"],
+							"path": ["products", "_update", "1"]
+						}
+					}
+				},
+				{
+					"name": "Get Single Product",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{es_host}}/products/_doc/2",
+							"host": ["{{es_host}}"],
+							"path": ["products", "_doc", "2"]
+						}
+					}
+				},
+				{
+					"name": "Count Products",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{es_host}}/products/_count",
+							"host": ["{{es_host}}"],
+							"path": ["products", "_count"]
+						}
+					}
+				},
+				{
+					"name": "Count Articles",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{es_host}}/articles/_count",
+							"host": ["{{es_host}}"],
+							"path": ["articles", "_count"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "4. Text Analysis",
+			"item": [
+				{
+					"name": "Test Standard Analyzer",
+					"request": {
+						"method": "POST",
+						"header": [{"key": "Content-Type", "value": "application/json"}],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"analyzer\": \"standard\",\n  \"text\": \"Elasticsearch is POWERFUL!\"\n}"
+						},
+						"url": {
+							"raw": "{{es_host}}/_analyze",
+							"host": ["{{es_host}}"],
+							"path": ["_analyze"]
+						}
+					}
+				},
+				{
+					"name": "Test Whitespace Analyzer",
+					"request": {
+						"method": "POST",
+						"header": [{"key": "Content-Type", "value": "application/json"}],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"analyzer\": \"whitespace\",\n  \"text\": \"Elasticsearch is POWERFUL!\"\n}"
+						},
+						"url": {
+							"raw": "{{es_host}}/_analyze",
+							"host": ["{{es_host}}"],
+							"path": ["_analyze"]
+						}
+					}
+				},
+				{
+					"name": "Test Custom Analyzer",
+					"request": {
+						"method": "POST",
+						"header": [{"key": "Content-Type", "value": "application/json"}],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"analyzer\": \"custom_analyzer\",\n  \"text\": \"Elasticsearch is POWERFUL!\"\n}"
+						},
+						"url": {
+							"raw": "{{es_host}}/products/_analyze",
+							"host": ["{{es_host}}"],
+							"path": ["products", "_analyze"]
+						}
+					}
+				},
+				{
+					"name": "Test Lowercase Filter",
+					"request": {
+						"method": "POST",
+						"header": [{"key": "Content-Type", "value": "application/json"}],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"tokenizer\": \"standard\",\n  \"filter\": [\"lowercase\"],\n  \"text\": \"The Quick BROWN Fox\"\n}"
+						},
+						"url": {
+							"raw": "{{es_host}}/_analyze",
+							"host": ["{{es_host}}"],
+							"path": ["_analyze"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "5. Basic Queries",
+			"item": [
+				{
+					"name": "Match All Query",
+					"request": {
+						"method": "GET",
+						"header": [{"key": "Content-Type", "value": "application/json"}],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"query\": {\n    \"match_all\": {}\n  }\n}"
+						},
+						"url": {
+							"raw": "{{es_host}}/products/_search?pretty=true",
+							"host": ["{{es_host}}"],
+							"path": ["products", "_search"],
+							"query": [{"key": "pretty", "value": "true"}]
+						}
+					}
+				},
+				{
+					"name": "Match Query (Full-Text)",
+					"request": {
+						"method": "GET",
+						"header": [{"key": "Content-Type", "value": "application/json"}],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"query\": {\n    \"match\": {\n      \"description\": \"laptop processor\"\n    }\n  }\n}"
+						},
+						"url": {
+							"raw": "{{es_host}}/products/_search?pretty=true",
+							"host": ["{{es_host}}"],
+							"path": ["products", "_search"],
+							"query": [{"key": "pretty", "value": "true"}]
+						}
+					}
+				},
+				{
+					"name": "Multi-Match Query",
+					"request": {
+						"method": "GET",
+						"header": [{"key": "Content-Type", "value": "application/json"}],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"query\": {\n    \"multi_match\": {\n      \"query\": \"apple\",\n      \"fields\": [\"name\", \"description\"]\n    }\n  }\n}"
+						},
+						"url": {
+							"raw": "{{es_host}}/products/_search?pretty=true",
+							"host": ["{{es_host}}"],
+							"path": ["products", "_search"],
+							"query": [{"key": "pretty", "value": "true"}]
+						}
+					}
+				},
+				{
+					"name": "Term Query (Exact Match)",
+					"request": {
+						"method": "GET",
+						"header": [{"key": "Content-Type", "value": "application/json"}],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"query\": {\n    \"term\": {\n      \"category\": \"Electronics\"\n    }\n  }\n}"
+						},
+						"url": {
+							"raw": "{{es_host}}/products/_search?pretty=true",
+							"host": ["{{es_host}}"],
+							"path": ["products", "_search"],
+							"query": [{"key": "pretty", "value": "true"}]
+						}
+					}
+				},
+				{
+					"name": "Terms Query (Multiple Values)",
+					"request": {
+						"method": "GET",
+						"header": [{"key": "Content-Type", "value": "application/json"}],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"query\": {\n    \"terms\": {\n      \"category\": [\"Electronics\", \"Audio\"]\n    }\n  }\n}"
+						},
+						"url": {
+							"raw": "{{es_host}}/products/_search?pretty=true",
+							"host": ["{{es_host}}"],
+							"path": ["products", "_search"],
+							"query": [{"key": "pretty", "value": "true"}]
+						}
+					}
+				},
+				{
+					"name": "Range Query (Price)",
+					"request": {
+						"method": "GET",
+						"header": [{"key": "Content-Type", "value": "application/json"}],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"query\": {\n    \"range\": {\n      \"price\": {\n        \"gte\": 100,\n        \"lte\": 500\n      }\n    }\n  }\n}"
+						},
+						"url": {
+							"raw": "{{es_host}}/products/_search?pretty=true",
+							"host": ["{{es_host}}"],
+							"path": ["products", "_search"],
+							"query": [{"key": "pretty", "value": "true"}]
+						}
+					}
+				},
+				{
+					"name": "Bool Query (Combined)",
+					"request": {
+						"method": "GET",
+						"header": [{"key": "Content-Type", "value": "application/json"}],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"query\": {\n    \"bool\": {\n      \"must\": [\n        {\"term\": {\"category\": \"Electronics\"}}\n      ],\n      \"filter\": [\n        {\"range\": {\"price\": {\"gte\": 500, \"lte\": 1500}}}\n      ]\n    }\n  }\n}"
+						},
+						"url": {
+							"raw": "{{es_host}}/products/_search?pretty=true",
+							"host": ["{{es_host}}"],
+							"path": ["products", "_search"],
+							"query": [{"key": "pretty", "value": "true"}]
+						}
+					}
+				},
+				{
+					"name": "Exists Query",
+					"request": {
+						"method": "GET",
+						"header": [{"key": "Content-Type", "value": "application/json"}],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"query\": {\n    \"exists\": {\n      \"field\": \"tags\"\n    }\n  }\n}"
+						},
+						"url": {
+							"raw": "{{es_host}}/products/_search?pretty=true",
+							"host": ["{{es_host}}"],
+							"path": ["products", "_search"],
+							"query": [{"key": "pretty", "value": "true"}]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "6. Advanced Queries",
+			"item": [
+				{
+					"name": "Wildcard Query",
+					"request": {
+						"method": "GET",
+						"header": [{"key": "Content-Type", "value": "application/json"}],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"query\": {\n    \"wildcard\": {\n      \"name.keyword\": \"Sam*\"\n    }\n  }\n}"
+						},
+						"url": {
+							"raw": "{{es_host}}/products/_search?pretty=true",
+							"host": ["{{es_host}}"],
+							"path": ["products", "_search"],
+							"query": [{"key": "pretty", "value": "true"}]
+						}
+					}
+				},
+				{
+					"name": "Fuzzy Query (Typo Tolerance)",
+					"request": {
+						"method": "GET",
+						"header": [{"key": "Content-Type", "value": "application/json"}],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"query\": {\n    \"fuzzy\": {\n      \"name\": {\n        \"value\": \"iphon\",\n        \"fuzziness\": \"AUTO\"\n      }\n    }\n  }\n}"
+						},
+						"url": {
+							"raw": "{{es_host}}/products/_search?pretty=true",
+							"host": ["{{es_host}}"],
+							"path": ["products", "_search"],
+							"query": [{"key": "pretty", "value": "true"}]
+						}
+					}
+				},
+				{
+					"name": "Prefix Query",
+					"request": {
+						"method": "GET",
+						"header": [{"key": "Content-Type", "value": "application/json"}],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"query\": {\n    \"prefix\": {\n      \"name.keyword\": \"Mac\"\n    }\n  }\n}"
+						},
+						"url": {
+							"raw": "{{es_host}}/products/_search?pretty=true",
+							"host": ["{{es_host}}"],
+							"path": ["products", "_search"],
+							"query": [{"key": "pretty", "value": "true"}]
+						}
+					}
+				},
+				{
+					"name": "Regexp Query",
+					"request": {
+						"method": "GET",
+						"header": [{"key": "Content-Type", "value": "application/json"}],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"query\": {\n    \"regexp\": {\n      \"name.keyword\": \".*Book.*\"\n    }\n  }\n}"
+						},
+						"url": {
+							"raw": "{{es_host}}/products/_search?pretty=true",
+							"host": ["{{es_host}}"],
+							"path": ["products", "_search"],
+							"query": [{"key": "pretty", "value": "true"}]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "7. Aggregations",
+			"item": [
+				{
+					"name": "Group by Category",
+					"request": {
+						"method": "GET",
+						"header": [{"key": "Content-Type", "value": "application/json"}],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"size\": 0,\n  \"aggs\": {\n    \"products_by_category\": {\n      \"terms\": {\n        \"field\": \"category\",\n        \"size\": 10\n      }\n    }\n  }\n}"
+						},
+						"url": {
+							"raw": "{{es_host}}/products/_search?pretty=true",
+							"host": ["{{es_host}}"],
+							"path": ["products", "_search"],
+							"query": [{"key": "pretty", "value": "true"}]
+						}
+					}
+				},
+				{
+					"name": "Price Statistics",
+					"request": {
+						"method": "GET",
+						"header": [{"key": "Content-Type", "value": "application/json"}],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"size\": 0,\n  \"aggs\": {\n    \"price_stats\": {\n      \"stats\": {\n        \"field\": \"price\"\n      }\n    }\n  }\n}"
+						},
+						"url": {
+							"raw": "{{es_host}}/products/_search?pretty=true",
+							"host": ["{{es_host}}"],
+							"path": ["products", "_search"],
+							"query": [{"key": "pretty", "value": "true"}]
+						}
+					}
+				},
+				{
+					"name": "Combined Aggregations",
+					"request": {
+						"method": "GET",
+						"header": [{"key": "Content-Type", "value": "application/json"}],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"size\": 0,\n  \"aggs\": {\n    \"categories\": {\n      \"terms\": {\"field\": \"category\"},\n      \"aggs\": {\n        \"avg_price\": {\"avg\": {\"field\": \"price\"}},\n        \"total_stock\": {\"sum\": {\"field\": \"stock\"}},\n        \"min_price\": {\"min\": {\"field\": \"price\"}},\n        \"max_price\": {\"max\": {\"field\": \"price\"}}\n      }\n    }\n  }\n}"
+						},
+						"url": {
+							"raw": "{{es_host}}/products/_search?pretty=true",
+							"host": ["{{es_host}}"],
+							"path": ["products", "_search"],
+							"query": [{"key": "pretty", "value": "true"}]
+						}
+					}
+				},
+				{
+					"name": "Price Range Buckets",
+					"request": {
+						"method": "GET",
+						"header": [{"key": "Content-Type", "value": "application/json"}],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"size\": 0,\n  \"aggs\": {\n    \"price_ranges\": {\n      \"range\": {\n        \"field\": \"price\",\n        \"ranges\": [\n          {\"key\": \"Budget\", \"to\": 100},\n          {\"key\": \"Mid-range\", \"from\": 100, \"to\": 500},\n          {\"key\": \"Premium\", \"from\": 500, \"to\": 1000},\n          {\"key\": \"Luxury\", \"from\": 1000}\n        ]\n      }\n    }\n  }\n}"
+						},
+						"url": {
+							"raw": "{{es_host}}/products/_search?pretty=true",
+							"host": ["{{es_host}}"],
+							"path": ["products", "_search"],
+							"query": [{"key": "pretty", "value": "true"}]
+						}
+					}
+				},
+				{
+					"name": "Top 3 Most Viewed Articles",
+					"request": {
+						"method": "GET",
+						"header": [{"key": "Content-Type", "value": "application/json"}],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"size\": 0,\n  \"aggs\": {\n    \"top_articles\": {\n      \"top_hits\": {\n        \"sort\": [{\"viewCount\": {\"order\": \"desc\"}}],\n        \"_source\": [\"title\", \"viewCount\"],\n        \"size\": 3\n      }\n    }\n  }\n}"
+						},
+						"url": {
+							"raw": "{{es_host}}/articles/_search?pretty=true",
+							"host": ["{{es_host}}"],
+							"path": ["articles", "_search"],
+							"query": [{"key": "pretty", "value": "true"}]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "8. Sorting & Pagination",
+			"item": [
+				{
+					"name": "Sort by Price Ascending",
+					"request": {
+						"method": "GET",
+						"header": [{"key": "Content-Type", "value": "application/json"}],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"query\": {\"match_all\": {}},\n  \"sort\": [\n    {\"price\": {\"order\": \"asc\"}}\n  ]\n}"
+						},
+						"url": {
+							"raw": "{{es_host}}/products/_search?pretty=true",
+							"host": ["{{es_host}}"],
+							"path": ["products", "_search"],
+							"query": [{"key": "pretty", "value": "true"}]
+						}
+					}
+				},
+				{
+					"name": "Sort by Price Descending",
+					"request": {
+						"method": "GET",
+						"header": [{"key": "Content-Type", "value": "application/json"}],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"query\": {\"match_all\": {}},\n  \"sort\": [\n    {\"price\": {\"order\": \"desc\"}}\n  ]\n}"
+						},
+						"url": {
+							"raw": "{{es_host}}/products/_search?pretty=true",
+							"host": ["{{es_host}}"],
+							"path": ["products", "_search"],
+							"query": [{"key": "pretty", "value": "true"}]
+						}
+					}
+				},
+				{
+					"name": "Sort by Name Alphabetically",
+					"request": {
+						"method": "GET",
+						"header": [{"key": "Content-Type", "value": "application/json"}],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"query\": {\"match_all\": {}},\n  \"sort\": [\n    {\"name.keyword\": {\"order\": \"asc\"}}\n  ]\n}"
+						},
+						"url": {
+							"raw": "{{es_host}}/products/_search?pretty=true",
+							"host": ["{{es_host}}"],
+							"path": ["products", "_search"],
+							"query": [{"key": "pretty", "value": "true"}]
+						}
+					}
+				},
+				{
+					"name": "Multi-Field Sorting",
+					"request": {
+						"method": "GET",
+						"header": [{"key": "Content-Type", "value": "application/json"}],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"query\": {\"match_all\": {}},\n  \"sort\": [\n    {\"price\": {\"order\": \"desc\"}},\n    {\"name.keyword\": {\"order\": \"asc\"}}\n  ]\n}"
+						},
+						"url": {
+							"raw": "{{es_host}}/products/_search?pretty=true",
+							"host": ["{{es_host}}"],
+							"path": ["products", "_search"],
+							"query": [{"key": "pretty", "value": "true"}]
+						}
+					}
+				},
+				{
+					"name": "Pagination - First 3",
+					"request": {
+						"method": "GET",
+						"header": [{"key": "Content-Type", "value": "application/json"}],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"query\": {\"match_all\": {}},\n  \"from\": 0,\n  \"size\": 3,\n  \"sort\": [{\"price\": {\"order\": \"asc\"}}]\n}"
+						},
+						"url": {
+							"raw": "{{es_host}}/products/_search?pretty=true",
+							"host": ["{{es_host}}"],
+							"path": ["products", "_search"],
+							"query": [{"key": "pretty", "value": "true"}]
+						}
+					}
+				},
+				{
+					"name": "Pagination - Next 3",
+					"request": {
+						"method": "GET",
+						"header": [{"key": "Content-Type", "value": "application/json"}],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"query\": {\"match_all\": {}},\n  \"from\": 3,\n  \"size\": 3,\n  \"sort\": [{\"price\": {\"order\": \"asc\"}}]\n}"
+						},
+						"url": {
+							"raw": "{{es_host}}/products/_search?pretty=true",
+							"host": ["{{es_host}}"],
+							"path": ["products", "_search"],
+							"query": [{"key": "pretty", "value": "true"}]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "9. Highlighting",
+			"item": [
+				{
+					"name": "Highlight Search Terms",
+					"request": {
+						"method": "GET",
+						"header": [{"key": "Content-Type", "value": "application/json"}],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"query\": {\n    \"match\": {\n      \"description\": \"wireless noise\"\n    }\n  },\n  \"highlight\": {\n    \"fields\": {\n      \"description\": {}\n    },\n    \"pre_tags\": [\"<mark>\"],\n    \"post_tags\": [\"</mark>\"]\n  }\n}"
+						},
+						"url": {
+							"raw": "{{es_host}}/products/_search?pretty=true",
+							"host": ["{{es_host}}"],
+							"path": ["products", "_search"],
+							"query": [{"key": "pretty", "value": "true"}]
+						}
+					}
+				},
+				{
+					"name": "Highlight Article Content",
+					"request": {
+						"method": "GET",
+						"header": [{"key": "Content-Type", "value": "application/json"}],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"query\": {\n    \"match\": {\n      \"content\": \"elasticsearch query\"\n    }\n  },\n  \"highlight\": {\n    \"fields\": {\n      \"title\": {},\n      \"content\": {\"fragment_size\": 150}\n    }\n  }\n}"
+						},
+						"url": {
+							"raw": "{{es_host}}/articles/_search?pretty=true",
+							"host": ["{{es_host}}"],
+							"path": ["articles", "_search"],
+							"query": [{"key": "pretty", "value": "true"}]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "10. Article Queries",
+			"item": [
+				{
+					"name": "Search Articles by Content",
+					"request": {
+						"method": "GET",
+						"header": [{"key": "Content-Type", "value": "application/json"}],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"query\": {\n    \"match\": {\n      \"content\": \"optimization performance\"\n    }\n  }\n}"
+						},
+						"url": {
+							"raw": "{{es_host}}/articles/_search?pretty=true",
+							"host": ["{{es_host}}"],
+							"path": ["articles", "_search"],
+							"query": [{"key": "pretty", "value": "true"}]
+						}
+					}
+				},
+				{
+					"name": "Search by Tags",
+					"request": {
+						"method": "GET",
+						"header": [{"key": "Content-Type", "value": "application/json"}],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"query\": {\n    \"terms\": {\n      \"keywords\": [\"advanced\", \"analytics\"]\n    }\n  }\n}"
+						},
+						"url": {
+							"raw": "{{es_host}}/articles/_search?pretty=true",
+							"host": ["{{es_host}}"],
+							"path": ["articles", "_search"],
+							"query": [{"key": "pretty", "value": "true"}]
+						}
+					}
+				},
+				{
+					"name": "Search Title and Content",
+					"request": {
+						"method": "GET",
+						"header": [{"key": "Content-Type", "value": "application/json"}],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"query\": {\n    \"bool\": {\n      \"should\": [\n        {\"match\": {\"title\": {\"query\": \"elasticsearch\", \"boost\": 2}}},\n        {\"match\": {\"content\": \"elasticsearch\"}}\n      ]\n    }\n  }\n}"
+						},
+						"url": {
+							"raw": "{{es_host}}/articles/_search?pretty=true",
+							"host": ["{{es_host}}"],
+							"path": ["articles", "_search"],
+							"query": [{"key": "pretty", "value": "true"}]
+						}
+					}
+				}
+			]
+		}
+	],
+	"variable": [
+		{
+			"key": "es_host",
+			"value": "http://localhost:9200",
+			"type": "default"
+		}
+	]
+}
+

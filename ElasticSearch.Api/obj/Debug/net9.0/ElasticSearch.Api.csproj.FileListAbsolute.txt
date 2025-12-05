@@ -1,0 +1,8 @@
+C:\Users\Nmalidze\RiderProjects\ElasticSeach\ElasticSearch.Api\obj\Debug\net9.0\ElasticSearch.Api.csproj.AssemblyReference.cache
+C:\Users\Nmalidze\RiderProjects\ElasticSeach\ElasticSearch.Api\obj\Debug\net9.0\rpswa.dswa.cache.json
+C:\Users\Nmalidze\RiderProjects\ElasticSeach\ElasticSearch.Api\obj\Debug\net9.0\ElasticSearch.Api.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\Nmalidze\RiderProjects\ElasticSeach\ElasticSearch.Api\obj\Debug\net9.0\ElasticSearch.Api.AssemblyInfoInputs.cache
+C:\Users\Nmalidze\RiderProjects\ElasticSeach\ElasticSearch.Api\obj\Debug\net9.0\ElasticSearch.Api.AssemblyInfo.cs
+C:\Users\Nmalidze\RiderProjects\ElasticSeach\ElasticSearch.Api\obj\Debug\net9.0\ElasticSearch.Api.csproj.CoreCompileInputs.cache
+C:\Users\Nmalidze\RiderProjects\ElasticSeach\ElasticSearch.Api\obj\Debug\net9.0\ElasticSearch.Api.MvcApplicationPartsAssemblyInfo.cs
+C:\Users\Nmalidze\RiderProjects\ElasticSeach\ElasticSearch.Api\obj\Debug\net9.0\ElasticSearch.Api.MvcApplicationPartsAssemblyInfo.cache

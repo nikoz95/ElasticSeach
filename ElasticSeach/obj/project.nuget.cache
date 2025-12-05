@@ -1,0 +1,16 @@
+{
+  "version": 2,
+  "dgSpecHash": "FjObr1JXvbM=",
+  "success": true,
+  "projectFilePath": "C:\\Users\\Nmalidze\\RiderProjects\\ElasticSeach\\ElasticSeach\\ElasticSeach.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\Nmalidze\\.nuget\\packages\\elastic.clients.elasticsearch\\8.15.6\\elastic.clients.elasticsearch.8.15.6.nupkg.sha512",
+    "C:\\Users\\Nmalidze\\.nuget\\packages\\elastic.transport\\0.4.22\\elastic.transport.0.4.22.nupkg.sha512",
+    "C:\\Users\\Nmalidze\\.nuget\\packages\\elasticsearch.net\\7.17.5\\elasticsearch.net.7.17.5.nupkg.sha512",
+    "C:\\Users\\Nmalidze\\.nuget\\packages\\microsoft.csharp\\4.6.0\\microsoft.csharp.4.6.0.nupkg.sha512",
+    "C:\\Users\\Nmalidze\\.nuget\\packages\\nest\\7.17.5\\nest.7.17.5.nupkg.sha512",
+    "C:\\Users\\Nmalidze\\.nuget\\packages\\system.buffers\\4.5.1\\system.buffers.4.5.1.nupkg.sha512",
+    "C:\\Users\\Nmalidze\\.nuget\\packages\\system.diagnostics.diagnosticsource\\5.0.0\\system.diagnostics.diagnosticsource.5.0.0.nupkg.sha512"
+  ],
+  "logs": []
+}

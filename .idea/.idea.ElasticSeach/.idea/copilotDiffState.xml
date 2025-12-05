@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="CopilotDiffPersistence">
+    <option name="pendingDiffs">
+      <map>
+        <entry key="$PROJECT_DIR$/COPY_PASTE_START.md">
+          <value>
+            <PendingDiffInfo>
+              <option name="filePath" value="$PROJECT_DIR$/COPY_PASTE_START.md" />
+              <option name="updatedContent" value="# ⚡ ᲡᲬᲠᲐᲤᲘ ᲒᲐᲨᲕᲔᲑᲐ - PARTIAL DOCKER (Recommended!)&#10;&#10;##  1-წუთიანი Setup&#10;&#10;```powershell&#10;# გადადი პროექტის folder-ში&#10;cd C:\Users\Nmalidze\RiderProjects\ElasticSeach&#10;&#10;# გაუშვი Elasticsearch + Kibana&#10;docker-compose -f docker-compose-alternative.yml up -d&#10;&#10;# დაელოდე 30 წამი&#10;timeout /t 30&#10;&#10;# შეამოწმე&#10;curl http://localhost:9200&#10;&#10;# გაუშვი Demo&#10;cd ElasticSeach&#10;dotnet run&#10;```&#10;&#10;**როცა menu გამოჩნდება:** Press **8** [Enter]&#10;&#10;---&#10;&#10;## ✅ რატომ ეს მეთოდი?&#10;&#10;| ✅ უპირატესობა | ❌ Full Docker პრობლემა |&#10;|----------------|-------------------------|&#10;| არ არის SSL issues | NuGet SSL error |&#10;| სწრაფია (30 წამი) | ნელია (3 წუთი) |&#10;| Easy debugging | Shell-only |&#10;| Hot reload | Build ხელახლა |&#10;| IDE support | არ არის IDE |&#10;&#10;---&#10;&#10;##  სრული ბიჯები (Copy-Paste)&#10;&#10;```powershell&#10;# 1. Start Docker Desktop&#10;# (ხელით გაუშვი Docker Desktop-ი)&#10;&#10;# 2. PowerShell/Terminal-ში:&#10;cd C:\Users\Nmalidze\RiderProjects\ElasticSeach&#10;&#10;# 3. Elasticsearch + Kibana&#10;docker-compose -f docker-compose-alternative.yml up -d&#10;&#10;# 4. Wait&#10;timeout /t 30&#10;&#10;# 5. Test Elasticsearch&#10;Invoke-RestMethod http://localhost:9200&#10;&#10;# 6. Run Demo&#10;cd ElasticSeach&#10;dotnet run&#10;&#10;# 7. In the menu:&#10;# Press 8 [Enter]&#10;&#10;#  Done!&#10;```&#10;&#10;---&#10;&#10;##  როგორ გავაჩერო?&#10;&#10;```powershell&#10;# Stop (data დარჩება)&#10;docker-compose -f docker-compose-alternative.yml stop&#10;&#10;# Remove (fresh start)&#10;docker-compose -f docker-compose-alternative.yml down -v&#10;```&#10;&#10;---&#10;&#10;##  რა მუშაობს ახლა?&#10;&#10;```&#10;Elasticsearch: http://localhost:9200  ✅&#10;Kibana:        http://localhost:5601  ✅  &#10;Demo App:      dotnet run (local)     ✅&#10;```&#10;&#10;---&#10;&#10;##  ეს არის საუკეთესო გზა!&#10;&#10;**SSL პრობლემები:** ❌ არ არის!  &#10;**სიჩქარე:** ⚡ 30 წამი  &#10;**Debugging:**  Visual Studio/Rider  &#10;**რთულობა:**  მარტივი  &#10;&#10;**გისურვებ წარმატებებს! **&#10;" />
+            </PendingDiffInfo>
+          </value>
+        </entry>
+      </map>
+    </option>
+  </component>
+</project>
