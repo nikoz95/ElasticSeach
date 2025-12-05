@@ -28,6 +28,11 @@ public class ProductSearchService
             )
         );
 
+        if (!response.IsValid || response.Documents == null)
+        {
+            return new List<Product>();
+        }
+
         return response.Documents.ToList();
     }
 
@@ -46,6 +51,11 @@ public class ProductSearchService
             )
         );
 
+        if (!response.IsValid || response.Documents == null)
+        {
+            return new List<Product>();
+        }
+
         return response.Documents.ToList();
     }
 
@@ -61,6 +71,11 @@ public class ProductSearchService
                 )
             )
         );
+
+        if (!response.IsValid || response.Documents == null)
+        {
+            return new List<Product>();
+        }
 
         return response.Documents.ToList();
     }
@@ -78,8 +93,18 @@ public class ProductSearchService
             )
         );
 
-        var buckets = response.Aggregations.Terms("categories").Buckets;
-        return buckets.ToDictionary(b => b.Key, b => b.DocCount ?? 0);
+        if (!response.IsValid || response.Aggregations == null)
+        {
+            return new Dictionary<string, long>();
+        }
+
+        var termsAggregation = response.Aggregations.Terms("categories");
+        if (termsAggregation?.Buckets == null)
+        {
+            return new Dictionary<string, long>();
+        }
+
+        return termsAggregation.Buckets.ToDictionary(b => b.Key, b => b.DocCount ?? 0);
     }
 }
 

@@ -28,6 +28,8 @@ builder.Services.AddSingleton(elasticClient);
 
 // Register services
 builder.Services.AddScoped<ProductSearchService>();
+builder.Services.AddScoped<AdvancedSearchService>();
+builder.Services.AddScoped<IndexMappingService>();
 
 var app = builder.Build();
 
