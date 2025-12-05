@@ -87,3 +87,4 @@ C:\Users\Nmalidze\RiderProjects\ElasticSeach\ElasticSearch.Jobs\obj\Debug\net9.0
 C:\Users\Nmalidze\RiderProjects\ElasticSeach\ElasticSearch.Jobs\obj\Debug\net9.0\ElasticSearch.Jobs.pdb
 C:\Users\Nmalidze\RiderProjects\ElasticSeach\ElasticSearch.Jobs\obj\Debug\net9.0\ElasticSearch.Jobs.genruntimeconfig.cache
 C:\Users\Nmalidze\RiderProjects\ElasticSeach\ElasticSearch.Jobs\obj\Debug\net9.0\ref\ElasticSearch.Jobs.dll
+C:\Users\Nmalidze\RiderProjects\ElasticSeach\ElasticSearch.Jobs\obj\Debug\net9.0\ElasticSearch.Jobs.sourcelink.json

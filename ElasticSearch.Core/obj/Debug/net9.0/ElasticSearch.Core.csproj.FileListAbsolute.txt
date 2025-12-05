@@ -10,3 +10,4 @@ C:\Users\Nmalidze\RiderProjects\ElasticSeach\ElasticSearch.Core\obj\Debug\net9.0
 C:\Users\Nmalidze\RiderProjects\ElasticSeach\ElasticSearch.Core\obj\Debug\net9.0\refint\ElasticSearch.Core.dll
 C:\Users\Nmalidze\RiderProjects\ElasticSeach\ElasticSearch.Core\obj\Debug\net9.0\ElasticSearch.Core.pdb
 C:\Users\Nmalidze\RiderProjects\ElasticSeach\ElasticSearch.Core\obj\Debug\net9.0\ref\ElasticSearch.Core.dll
+C:\Users\Nmalidze\RiderProjects\ElasticSeach\ElasticSearch.Core\obj\Debug\net9.0\ElasticSearch.Core.sourcelink.json

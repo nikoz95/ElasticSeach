@@ -1,9 +1,0 @@
-C:\Users\Nmalidze\RiderProjects\ElasticSeach\ElasticSeach\bin\Release\net9.0\publish\ElasticSeach.exe
-C:\Users\Nmalidze\RiderProjects\ElasticSeach\ElasticSeach\bin\Release\net9.0\publish\ElasticSeach.dll
-C:\Users\Nmalidze\RiderProjects\ElasticSeach\ElasticSeach\bin\Release\net9.0\publish\ElasticSeach.deps.json
-C:\Users\Nmalidze\RiderProjects\ElasticSeach\ElasticSeach\bin\Release\net9.0\publish\ElasticSeach.runtimeconfig.json
-C:\Users\Nmalidze\RiderProjects\ElasticSeach\ElasticSeach\bin\Release\net9.0\publish\ElasticSeach.pdb
-C:\Users\Nmalidze\RiderProjects\ElasticSeach\ElasticSeach\bin\Release\net9.0\publish\Elastic.Clients.Elasticsearch.dll
-C:\Users\Nmalidze\RiderProjects\ElasticSeach\ElasticSeach\bin\Release\net9.0\publish\Elastic.Transport.dll
-C:\Users\Nmalidze\RiderProjects\ElasticSeach\ElasticSeach\bin\Release\net9.0\publish\Elasticsearch.Net.dll
-C:\Users\Nmalidze\RiderProjects\ElasticSeach\ElasticSeach\bin\Release\net9.0\publish\Nest.dll
