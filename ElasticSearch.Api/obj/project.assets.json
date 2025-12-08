@@ -2739,11 +2739,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\Users\\Nmalidze\\RiderProjects\\ElasticSeach\\ElasticSearch.Api\\ElasticSearch.Api.csproj",
+      "projectUniqueName": "C:\\Users\\Nmalidze\\RiderProjects\\ElasticSearch\\ElasticSearch.Api\\ElasticSearch.Api.csproj",
       "projectName": "ElasticSearch.Api",
-      "projectPath": "C:\\Users\\Nmalidze\\RiderProjects\\ElasticSeach\\ElasticSearch.Api\\ElasticSearch.Api.csproj",
+      "projectPath": "C:\\Users\\Nmalidze\\RiderProjects\\ElasticSearch\\ElasticSearch.Api\\ElasticSearch.Api.csproj",
       "packagesPath": "C:\\Users\\Nmalidze\\.nuget\\packages\\",
-      "outputPath": "C:\\Users\\Nmalidze\\RiderProjects\\ElasticSeach\\ElasticSearch.Api\\obj\\",
+      "outputPath": "C:\\Users\\Nmalidze\\RiderProjects\\ElasticSearch\\ElasticSearch.Api\\obj\\",
       "projectStyle": "PackageReference",
       "fallbackFolders": [
         "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
@@ -2764,8 +2764,8 @@
         "net9.0": {
           "targetAlias": "net9.0",
           "projectReferences": {
-            "C:\\Users\\Nmalidze\\RiderProjects\\ElasticSeach\\ElasticSearch.Core\\ElasticSearch.Core.csproj": {
-              "projectPath": "C:\\Users\\Nmalidze\\RiderProjects\\ElasticSeach\\ElasticSearch.Core\\ElasticSearch.Core.csproj"
+            "C:\\Users\\Nmalidze\\RiderProjects\\ElasticSearch\\ElasticSearch.Core\\ElasticSearch.Core.csproj": {
+              "projectPath": "C:\\Users\\Nmalidze\\RiderProjects\\ElasticSearch\\ElasticSearch.Core\\ElasticSearch.Core.csproj"
             }
           }
         }

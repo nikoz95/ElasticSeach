@@ -279,11 +279,9 @@ public class IndexMappingService
             Console.WriteLine($"✅ Reindexed {response.Total} documents from '{sourceIndex}' to '{destIndex}'");
             return true;
         }
-        else
-        {
-            Console.WriteLine($"❌ Reindex failed: {response.DebugInformation}");
-            return false;
-        }
+
+        Console.WriteLine($"❌ Reindex failed: {response.DebugInformation}");
+        return false;
     }
 
     /// <summary>
@@ -304,11 +302,9 @@ public class IndexMappingService
             Console.WriteLine($"✅ Index '{indexName}' created with alias '{aliasName}'");
             return true;
         }
-        else
-        {
-            Console.WriteLine($"❌ Failed: {response.DebugInformation}");
-            return false;
-        }
+
+        Console.WriteLine($"❌ Failed: {response.DebugInformation}");
+        return false;
     }
 
     /// <summary>

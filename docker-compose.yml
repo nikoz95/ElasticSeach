@@ -1,5 +1,4 @@
-﻿version: '3.8'
-
+﻿
 services:
   # Elasticsearch Service
   elasticsearch:
@@ -48,21 +47,22 @@ services:
       timeout: 5s
       retries: 30
 
-  # .NET Application
-  elasticsearch-demo:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: elasticsearch-demo-app
-    environment:
-      - ELASTICSEARCH_URL=http://elasticsearch:9200
-    networks:
-      - elastic-network
-    depends_on:
-      kibana:
-        condition: service_healthy
-    stdin_open: true
-    tty: true
+  # .NET Application (Optional - run with 'dotnet run' instead)
+  # Uncomment if you want to run the app in Docker
+  # elasticsearch-demo:
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile
+  #   container_name: elasticsearch-demo-app
+  #   environment:
+  #     - ELASTICSEARCH_URL=http://elasticsearch:9200
+  #   networks:
+  #     - elastic-network
+  #   depends_on:
+  #     kibana:
+  #       condition: service_healthy
+  #   stdin_open: true
+  #   tty: true
 
 volumes:
   elasticsearch-data:

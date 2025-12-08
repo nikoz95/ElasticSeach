@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Users\\Nmalidze\\RiderProjects\\ElasticSeach\\ElasticSearch.Jobs\\ElasticSearch.Jobs.csproj": {}
+    "C:\\Users\\Nmalidze\\RiderProjects\\ElasticSearch\\ElasticSearch.Jobs\\ElasticSearch.Jobs.csproj": {}
   },
   "projects": {
-    "C:\\Users\\Nmalidze\\RiderProjects\\ElasticSeach\\ElasticSearch.Core\\ElasticSearch.Core.csproj": {
+    "C:\\Users\\Nmalidze\\RiderProjects\\ElasticSearch\\ElasticSearch.Core\\ElasticSearch.Core.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\Nmalidze\\RiderProjects\\ElasticSeach\\ElasticSearch.Core\\ElasticSearch.Core.csproj",
+        "projectUniqueName": "C:\\Users\\Nmalidze\\RiderProjects\\ElasticSearch\\ElasticSearch.Core\\ElasticSearch.Core.csproj",
         "projectName": "ElasticSearch.Core",
-        "projectPath": "C:\\Users\\Nmalidze\\RiderProjects\\ElasticSeach\\ElasticSearch.Core\\ElasticSearch.Core.csproj",
+        "projectPath": "C:\\Users\\Nmalidze\\RiderProjects\\ElasticSearch\\ElasticSearch.Core\\ElasticSearch.Core.csproj",
         "packagesPath": "C:\\Users\\Nmalidze\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\Nmalidze\\RiderProjects\\ElasticSeach\\ElasticSearch.Core\\obj\\",
+        "outputPath": "C:\\Users\\Nmalidze\\RiderProjects\\ElasticSearch\\ElasticSearch.Core\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
@@ -87,14 +87,14 @@
         }
       }
     },
-    "C:\\Users\\Nmalidze\\RiderProjects\\ElasticSeach\\ElasticSearch.Jobs\\ElasticSearch.Jobs.csproj": {
+    "C:\\Users\\Nmalidze\\RiderProjects\\ElasticSearch\\ElasticSearch.Jobs\\ElasticSearch.Jobs.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\Nmalidze\\RiderProjects\\ElasticSeach\\ElasticSearch.Jobs\\ElasticSearch.Jobs.csproj",
+        "projectUniqueName": "C:\\Users\\Nmalidze\\RiderProjects\\ElasticSearch\\ElasticSearch.Jobs\\ElasticSearch.Jobs.csproj",
         "projectName": "ElasticSearch.Jobs",
-        "projectPath": "C:\\Users\\Nmalidze\\RiderProjects\\ElasticSeach\\ElasticSearch.Jobs\\ElasticSearch.Jobs.csproj",
+        "projectPath": "C:\\Users\\Nmalidze\\RiderProjects\\ElasticSearch\\ElasticSearch.Jobs\\ElasticSearch.Jobs.csproj",
         "packagesPath": "C:\\Users\\Nmalidze\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\Nmalidze\\RiderProjects\\ElasticSeach\\ElasticSearch.Jobs\\obj\\",
+        "outputPath": "C:\\Users\\Nmalidze\\RiderProjects\\ElasticSearch\\ElasticSearch.Jobs\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
@@ -115,8 +115,8 @@
           "net9.0": {
             "targetAlias": "net9.0",
             "projectReferences": {
-              "C:\\Users\\Nmalidze\\RiderProjects\\ElasticSeach\\ElasticSearch.Core\\ElasticSearch.Core.csproj": {
-                "projectPath": "C:\\Users\\Nmalidze\\RiderProjects\\ElasticSeach\\ElasticSearch.Core\\ElasticSearch.Core.csproj"
+              "C:\\Users\\Nmalidze\\RiderProjects\\ElasticSearch\\ElasticSearch.Core\\ElasticSearch.Core.csproj": {
+                "projectPath": "C:\\Users\\Nmalidze\\RiderProjects\\ElasticSearch\\ElasticSearch.Core\\ElasticSearch.Core.csproj"
               }
             }
           }

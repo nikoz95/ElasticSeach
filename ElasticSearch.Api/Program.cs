@@ -26,12 +26,26 @@ var settings = new ConnectionSettings(new Uri(elasticsearchUri))
 var elasticClient = new ElasticClient(settings);
 builder.Services.AddSingleton(elasticClient);
 
+// Get SQL Server connection string
+var sqlConnectionString = builder.Configuration.GetConnectionString("SqlServer") 
+    ?? throw new Exception("SqlServer connection string not found");
+
 // Register services
 builder.Services.AddScoped<ProductSearchService>();
 builder.Services.AddScoped<AdvancedSearchService>();
 builder.Services.AddScoped<IndexMappingService>();
+builder.Services.AddScoped<DatabaseSeederService>(_ => new DatabaseSeederService(sqlConnectionString));
 
 var app = builder.Build();
+
+// Initialize database with test data on startup
+Console.WriteLine("🚀 Initializing application...");
+using (var scope = app.Services.CreateScope())
+{
+    var seeder = scope.ServiceProvider.GetRequiredService<DatabaseSeederService>();
+    await seeder.InitializeDatabaseAsync();
+}
+Console.WriteLine();
 
 // Configure the HTTP request pipeline
 if (app.Environment.IsDevelopment())
