@@ -26,17 +26,18 @@ Console.WriteLine($"🔗 SQL Server: {sqlConnectionString.Split(';')[0]}");
 Console.WriteLine($"🔍 Elasticsearch: {elasticsearchUri}");
 Console.WriteLine();
 
-// Configure Elasticsearch client
-var settings = new ConnectionSettings(new Uri(elasticsearchUri))
-    .DefaultIndex("products")
-    .DisableDirectStreaming();
-
-var elasticClient = new ElasticClient(settings);
+// Initialize database and seed test data
+var seeder = new DatabaseSeederService(sqlConnectionString);
+await seeder.InitializeDatabaseAsync();
+Console.WriteLine();
 
 // Test Elasticsearch connection
 try
 {
-    var pingResponse = await elasticClient.PingAsync();
+    var testSettings = new ConnectionSettings(new Uri(elasticsearchUri)).DefaultIndex("products");
+    var testClient = new ElasticClient(testSettings);
+    var pingResponse = await testClient.PingAsync();
+    
     if (pingResponse.IsValid)
     {
         Console.WriteLine("✅ Connected to Elasticsearch");
@@ -71,15 +72,17 @@ GlobalConfiguration.Configuration
 Console.WriteLine("✅ Hangfire configured");
 Console.WriteLine();
 
-// Create sync service
-var syncService = new SqlToElasticsearchSyncService(elasticClient, sqlConnectionString);
+// Initialize static job executor for Hangfire
+SyncJobExecutor.Initialize(sqlConnectionString, elasticsearchUri);
+Console.WriteLine("✅ Job executor initialized");
+Console.WriteLine();
 
 // Setup recurring jobs
 Console.WriteLine("📅 Setting up recurring jobs:");
 
 RecurringJob.AddOrUpdate(
     "incremental-sync",
-    () => syncService.IncrementalSyncAsync(),
+    () => SyncJobExecutor.ExecuteIncrementalSyncAsync(),
     configuration["BackgroundJobs:IncrementalSyncCron"] ?? "*/5 * * * *",
     new RecurringJobOptions { TimeZone = TimeZoneInfo.Local }
 );
@@ -87,7 +90,7 @@ Console.WriteLine("  ✓ Incremental Sync: Every 5 minutes");
 
 RecurringJob.AddOrUpdate(
     "full-sync-daily",
-    () => syncService.FullSyncAsync(),
+    () => SyncJobExecutor.ExecuteFullSyncAsync(),
     configuration["BackgroundJobs:FullSyncDailyCron"] ?? "0 2 * * *",
     new RecurringJobOptions { TimeZone = TimeZoneInfo.Local }
 );
@@ -95,7 +98,7 @@ Console.WriteLine("  ✓ Full Sync: Daily at 2:00 AM");
 
 RecurringJob.AddOrUpdate(
     "full-sync-weekly",
-    () => syncService.FullSyncAsync(),
+    () => SyncJobExecutor.ExecuteFullSyncAsync(),
     configuration["BackgroundJobs:FullSyncWeeklyCron"] ?? "0 3 * * 0",
     new RecurringJobOptions { TimeZone = TimeZoneInfo.Local }
 );
@@ -107,7 +110,8 @@ Console.WriteLine();
 using var server = new BackgroundJobServer(new BackgroundJobServerOptions
 {
     WorkerCount = 2,
-    ServerName = "ElasticSearchSyncServer"
+    ServerName = "ElasticSearchSyncServer",
+    Queues = new[] { "default" }
 });
 
 Console.WriteLine("╔══════════════════════════════════════════════════════════════╗");
@@ -122,12 +126,16 @@ Console.WriteLine("  • Incremental Sync: Running every 5 minutes");
 Console.WriteLine("  • Full Sync (Daily): 2:00 AM");
 Console.WriteLine("  • Full Sync (Weekly): Sunday 3:00 AM");
 Console.WriteLine();
+
+// Trigger initial sync immediately
+Console.WriteLine("🔥 Triggering initial full sync...");
+var jobId = BackgroundJob.Enqueue(() => SyncJobExecutor.ExecuteFullSyncAsync());
+Console.WriteLine($"  ✓ Job enqueued with ID: {jobId}");
+Console.WriteLine();
+
 Console.WriteLine("Press Ctrl+C to stop...");
 Console.WriteLine();
 
-// Trigger initial sync
-Console.WriteLine("🔥 Triggering initial full sync...");
-BackgroundJob.Enqueue(() => syncService.FullSyncAsync());
 
 // Keep running
 var exitEvent = new ManualResetEvent(false);

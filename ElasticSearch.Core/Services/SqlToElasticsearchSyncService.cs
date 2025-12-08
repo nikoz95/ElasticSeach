@@ -18,18 +18,36 @@ public class SqlToElasticsearchSyncService
 
     public async Task FullSyncAsync()
     {
-        Console.WriteLine("🔄 [FULL SYNC] Starting...");
+        var startTime = DateTime.Now;
+        Console.WriteLine($"🔄 [FULL SYNC] Starting at {startTime:HH:mm:ss}...");
         
-        await EnsureIndexExistsAsync();
-        var products = await GetProductsFromSqlAsync();
-        Console.WriteLine($"📊 Found {products.Count} products");
-        
-        if (products.Count > 0)
+        try
         {
-            await BulkIndexToElasticsearchAsync(products);
+            await EnsureIndexExistsAsync();
+            Console.WriteLine("  ✓ Index ensured");
+            
+            var products = await GetProductsFromSqlAsync();
+            Console.WriteLine($"  📊 Found {products.Count} products in SQL Server");
+            
+            if (products.Count > 0)
+            {
+                await BulkIndexToElasticsearchAsync(products);
+                Console.WriteLine($"  ✅ Indexed {products.Count} products to Elasticsearch");
+            }
+            else
+            {
+                Console.WriteLine("  ⚠️  No products found to sync");
+            }
+            
+            var duration = (DateTime.Now - startTime).TotalSeconds;
+            Console.WriteLine($"✅ [FULL SYNC] Completed in {duration:F2}s");
         }
-        
-        Console.WriteLine("✅ [FULL SYNC] Completed");
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ [FULL SYNC] Failed: {ex.Message}");
+            Console.WriteLine($"   Stack: {ex.StackTrace}");
+            throw;
+        }
     }
 
     public async Task IncrementalSyncAsync()
@@ -136,11 +154,50 @@ public class SqlToElasticsearchSyncService
     private async Task BulkIndexToElasticsearchAsync(List<Product> products)
     {
         const int batchSize = 1000;
-        var batches = products.Chunk(batchSize);
+        var batches = products.Chunk(batchSize).ToList();
+        
+        Console.WriteLine($"  📦 Indexing {products.Count} products in {batches.Count} batch(es)...");
+        
+        int processed = 0;
+        int successCount = 0;
+        int errorCount = 0;
         
         foreach (var batch in batches)
         {
-            await _elasticClient.BulkAsync(b => b.Index("products").IndexMany(batch));
+            var response = await _elasticClient.BulkAsync(b => b.Index("products").IndexMany(batch));
+            
+            if (!response.IsValid)
+            {
+                errorCount += batch.Length;
+                Console.WriteLine($"  ❌ Bulk index failed: {response.OriginalException?.Message}");
+                Console.WriteLine($"     Server error: {response.ServerError?.Error?.Reason}");
+                Console.WriteLine($"     Debug info: {response.DebugInformation}");
+            }
+            else if (response.Errors)
+            {
+                // Some items failed
+                var itemsWithErrors = response.ItemsWithErrors.ToList();
+                errorCount += itemsWithErrors.Count;
+                successCount += batch.Length - itemsWithErrors.Count;
+                
+                foreach (var item in itemsWithErrors.Take(3)) // Show first 3 errors
+                {
+                    Console.WriteLine($"  ⚠️  Item error: {item.Error?.Reason ?? "Unknown"}");
+                }
+                
+                if (itemsWithErrors.Count > 3)
+                {
+                    Console.WriteLine($"  ⚠️  ... and {itemsWithErrors.Count - 3} more errors");
+                }
+            }
+            else
+            {
+                successCount += batch.Length;
+            }
+            
+            processed += batch.Length;
+            Console.WriteLine($"    → Processed {processed}/{products.Count} products (✓ {successCount} success, ✗ {errorCount} errors)");
+            
             await Task.Delay(100);
         }
     }

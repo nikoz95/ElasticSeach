@@ -11,3 +11,16 @@ C:\Users\Nmalidze\RiderProjects\ElasticSeach\ElasticSearch.Core\obj\Debug\net9.0
 C:\Users\Nmalidze\RiderProjects\ElasticSeach\ElasticSearch.Core\obj\Debug\net9.0\refint\ElasticSearch.Core.dll
 C:\Users\Nmalidze\RiderProjects\ElasticSeach\ElasticSearch.Core\obj\Debug\net9.0\ElasticSearch.Core.pdb
 C:\Users\Nmalidze\RiderProjects\ElasticSeach\ElasticSearch.Core\obj\Debug\net9.0\ref\ElasticSearch.Core.dll
+C:\Users\Nmalidze\RiderProjects\ElasticSearch\ElasticSearch.Core\bin\Debug\net9.0\ElasticSearch.Core.deps.json
+C:\Users\Nmalidze\RiderProjects\ElasticSearch\ElasticSearch.Core\bin\Debug\net9.0\ElasticSearch.Core.dll
+C:\Users\Nmalidze\RiderProjects\ElasticSearch\ElasticSearch.Core\bin\Debug\net9.0\ElasticSearch.Core.pdb
+C:\Users\Nmalidze\RiderProjects\ElasticSearch\ElasticSearch.Core\obj\Debug\net9.0\ElasticSearch.Core.csproj.AssemblyReference.cache
+C:\Users\Nmalidze\RiderProjects\ElasticSearch\ElasticSearch.Core\obj\Debug\net9.0\ElasticSearch.Core.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\Nmalidze\RiderProjects\ElasticSearch\ElasticSearch.Core\obj\Debug\net9.0\ElasticSearch.Core.AssemblyInfoInputs.cache
+C:\Users\Nmalidze\RiderProjects\ElasticSearch\ElasticSearch.Core\obj\Debug\net9.0\ElasticSearch.Core.AssemblyInfo.cs
+C:\Users\Nmalidze\RiderProjects\ElasticSearch\ElasticSearch.Core\obj\Debug\net9.0\ElasticSearch.Core.csproj.CoreCompileInputs.cache
+C:\Users\Nmalidze\RiderProjects\ElasticSearch\ElasticSearch.Core\obj\Debug\net9.0\ElasticSearch.Core.sourcelink.json
+C:\Users\Nmalidze\RiderProjects\ElasticSearch\ElasticSearch.Core\obj\Debug\net9.0\ElasticSearch.Core.dll
+C:\Users\Nmalidze\RiderProjects\ElasticSearch\ElasticSearch.Core\obj\Debug\net9.0\refint\ElasticSearch.Core.dll
+C:\Users\Nmalidze\RiderProjects\ElasticSearch\ElasticSearch.Core\obj\Debug\net9.0\ElasticSearch.Core.pdb
+C:\Users\Nmalidze\RiderProjects\ElasticSearch\ElasticSearch.Core\obj\Debug\net9.0\ref\ElasticSearch.Core.dll

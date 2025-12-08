@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("ElasticSearch.Api")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+588c1d3787d3050ea3dde1045267463e36c9ee3f")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+aaa64430de44439aa326f410b606b65612d4951c")]
 [assembly: System.Reflection.AssemblyProductAttribute("ElasticSearch.Api")]
 [assembly: System.Reflection.AssemblyTitleAttribute("ElasticSearch.Api")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
