@@ -406,3 +406,12 @@ FodyWeavers.xsd
 .idea/
 *.sln.DotSettings.user
 
+# Docker
+.env
+docker-compose.override.yml
+
+# Database files
+*.mdf
+*.ldf
+*.ndf
+

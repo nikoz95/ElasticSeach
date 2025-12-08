@@ -1,5 +1,25 @@
 ﻿
 services:
+  # SQL Server Service
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: sqlserver
+    environment:
+      - ACCEPT_EULA=Y
+      - SA_PASSWORD=Password1234!
+      - MSSQL_PID=Developer
+    ports:
+      - "1433:1433"
+    volumes:
+      - sqlserver-data:/var/opt/mssql
+    networks:
+      - elastic-network
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P 'Password1234!' -C -Q 'SELECT 1' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+
   # Elasticsearch Service
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
@@ -47,25 +67,52 @@ services:
       timeout: 5s
       retries: 30
 
-  # .NET Application (Optional - run with 'dotnet run' instead)
-  # Uncomment if you want to run the app in Docker
-  # elasticsearch-demo:
-  #   build:
-  #     context: .
-  #     dockerfile: Dockerfile
-  #   container_name: elasticsearch-demo-app
-  #   environment:
-  #     - ELASTICSEARCH_URL=http://elasticsearch:9200
-  #   networks:
-  #     - elastic-network
-  #   depends_on:
-  #     kibana:
-  #       condition: service_healthy
-  #   stdin_open: true
-  #   tty: true
+  # ElasticSearch API Service
+  api:
+    build:
+      context: .
+      dockerfile: ElasticSearch.Api/Dockerfile
+    container_name: elasticsearch-api
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_URLS=http://+:8080
+      - ConnectionStrings__SqlServer=Server=sqlserver,1433;Database=ElasticsearchDemo;User Id=sa;Password=Password1234!;TrustServerCertificate=True;
+      - Elasticsearch__Uri=http://elasticsearch:9200
+    ports:
+      - "5000:8080"
+    networks:
+      - elastic-network
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+      sqlserver:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # Background Jobs Service
+  jobs:
+    build:
+      context: .
+      dockerfile: ElasticSearch.Jobs/Dockerfile
+    container_name: elasticsearch-jobs
+    environment:
+      - DOTNET_ENVIRONMENT=Production
+      - ConnectionStrings__SqlServer=Server=sqlserver,1433;Database=ElasticsearchDemo;User Id=sa;Password=Password1234!;TrustServerCertificate=True;
+      - ConnectionStrings__Hangfire=Server=sqlserver,1433;Database=ElasticsearchDemo;User Id=sa;Password=Password1234!;TrustServerCertificate=True;
+      - Elasticsearch__Uri=http://elasticsearch:9200
+    networks:
+      - elastic-network
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+      sqlserver:
+        condition: service_healthy
+    restart: unless-stopped
 
 volumes:
   elasticsearch-data:
+    driver: local
+  sqlserver-data:
     driver: local
 
 networks:

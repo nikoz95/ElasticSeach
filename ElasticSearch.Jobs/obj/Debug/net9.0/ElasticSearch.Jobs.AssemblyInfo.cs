@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("ElasticSearch.Jobs")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+aaa64430de44439aa326f410b606b65612d4951c")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+39f9023c4f8fa55a6a16345d2c82e4c0811d76f9")]
 [assembly: System.Reflection.AssemblyProductAttribute("ElasticSearch.Jobs")]
 [assembly: System.Reflection.AssemblyTitleAttribute("ElasticSearch.Jobs")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

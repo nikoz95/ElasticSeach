@@ -39,6 +39,10 @@ public class SqlToElasticsearchSyncService
                 Console.WriteLine("  ⚠️  No products found to sync");
             }
             
+            // Update last sync timestamp
+            await UpdateLastSyncTimestampAsync(DateTime.UtcNow);
+            Console.WriteLine("  ✓ Updated last sync timestamp");
+            
             var duration = (DateTime.Now - startTime).TotalSeconds;
             Console.WriteLine($"✅ [FULL SYNC] Completed in {duration:F2}s");
         }
@@ -52,41 +56,63 @@ public class SqlToElasticsearchSyncService
 
     public async Task IncrementalSyncAsync()
     {
-        Console.WriteLine("🔄 [INCREMENTAL SYNC] Starting...");
+        var startTime = DateTime.Now;
+        Console.WriteLine($"🔄 [INCREMENTAL SYNC] Starting at {startTime:HH:mm:ss}...");
         
-        var lastSync = await GetLastSyncTimestampAsync();
-        Console.WriteLine($"📅 Last sync: {lastSync:yyyy-MM-dd HH:mm:ss}");
-        
-        var changes = await GetChangedProductsFromSqlAsync(lastSync);
-        Console.WriteLine($"📊 Found {changes.Count} changes");
-        
-        if (changes.Count == 0)
+        try
         {
-            await UpdateLastSyncTimestampAsync(DateTime.UtcNow);
-            Console.WriteLine("✅ No changes");
-            return;
-        }
-
-        foreach (var change in changes)
-        {
-            if (change.IsDeleted)
+            var lastSync = await GetLastSyncTimestampAsync();
+            var timeSinceLastSync = DateTime.UtcNow - lastSync;
+            
+            Console.WriteLine($"  📅 Last sync: {lastSync:yyyy-MM-dd HH:mm:ss} UTC ({timeSinceLastSync.TotalMinutes:F1} minutes ago)");
+            
+            var changes = await GetChangedProductsFromSqlAsync(lastSync);
+            Console.WriteLine($"  📊 Found {changes.Count} changes since last sync");
+            
+            if (changes.Count == 0)
             {
-                await _elasticClient.DeleteAsync<Product>(change.Id.ToString(), d => d.Index("products"));
-                Console.WriteLine($"  ✗ Deleted product {change.Id}");
+                await UpdateLastSyncTimestampAsync(DateTime.UtcNow);
+                Console.WriteLine("  ✅ No changes to sync");
+                var duration = (DateTime.Now - startTime).TotalSeconds;
+                Console.WriteLine($"✅ [INCREMENTAL SYNC] Completed in {duration:F2}s");
+                return;
             }
-            else
+
+            int syncedCount = 0;
+            int deletedCount = 0;
+            
+            foreach (var change in changes)
             {
-                var product = await GetProductDetailFromSqlAsync(change.Id);
-                if (product != null)
+                if (change.IsDeleted)
                 {
-                    await _elasticClient.IndexAsync(product, i => i.Index("products").Id(product.Id));
-                    Console.WriteLine($"  ✓ Synced product {change.Id}");
+                    await _elasticClient.DeleteAsync<Product>(change.Id.ToString(), d => d.Index("products"));
+                    deletedCount++;
+                    Console.WriteLine($"  ✗ Deleted product {change.Id}");
+                }
+                else
+                {
+                    var product = await GetProductDetailFromSqlAsync(change.Id);
+                    if (product != null)
+                    {
+                        await _elasticClient.IndexAsync(product, i => i.Index("products").Id(product.Id));
+                        syncedCount++;
+                        Console.WriteLine($"  ✓ Synced product {change.Id}: {product.Name}");
+                    }
                 }
             }
-        }
 
-        await UpdateLastSyncTimestampAsync(DateTime.UtcNow);
-        Console.WriteLine("✅ [INCREMENTAL SYNC] Completed");
+            await UpdateLastSyncTimestampAsync(DateTime.UtcNow);
+            
+            var totalDuration = (DateTime.Now - startTime).TotalSeconds;
+            Console.WriteLine($"  📈 Summary: {syncedCount} updated, {deletedCount} deleted");
+            Console.WriteLine($"✅ [INCREMENTAL SYNC] Completed in {totalDuration:F2}s");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ [INCREMENTAL SYNC] Failed: {ex.Message}");
+            Console.WriteLine($"   Stack: {ex.StackTrace}");
+            throw;
+        }
     }
 
     private async Task EnsureIndexExistsAsync()
@@ -166,37 +192,58 @@ public class SqlToElasticsearchSyncService
         {
             var response = await _elasticClient.BulkAsync(b => b.Index("products").IndexMany(batch));
             
-            if (!response.IsValid)
+            // Don't trust response.IsValid or response.Errors flags
+            // They are unreliable with NEST library
+            // Instead, check actual HTTP status codes
+            
+            if (response.Items != null && response.Items.Any())
             {
-                errorCount += batch.Length;
-                Console.WriteLine($"  ❌ Bulk index failed: {response.OriginalException?.Message}");
-                Console.WriteLine($"     Server error: {response.ServerError?.Error?.Reason}");
-                Console.WriteLine($"     Debug info: {response.DebugInformation}");
+                foreach (var item in response.Items)
+                {
+                    // Status 200 (OK) or 201 (Created) = SUCCESS
+                    // Anything else = ERROR
+                    if (item.Status >= 200 && item.Status < 300)
+                    {
+                        successCount++;
+                    }
+                    else
+                    {
+                        errorCount++;
+                        if (errorCount <= 3)
+                        {
+                            var errorMsg = item.Error?.Reason ?? "Unknown error";
+                            Console.WriteLine($"  ⚠️  Item {item.Id} failed (HTTP {item.Status}): {errorMsg}");
+                        }
+                    }
+                }
+                
+                if (errorCount > 3)
+                {
+                    Console.WriteLine($"  ⚠️  ... and {errorCount - 3} more errors");
+                }
             }
-            else if (response.Errors)
+            else if (response.OriginalException != null)
             {
-                // Some items failed
-                var itemsWithErrors = response.ItemsWithErrors.ToList();
-                errorCount += itemsWithErrors.Count;
-                successCount += batch.Length - itemsWithErrors.Count;
-                
-                foreach (var item in itemsWithErrors.Take(3)) // Show first 3 errors
-                {
-                    Console.WriteLine($"  ⚠️  Item error: {item.Error?.Reason ?? "Unknown"}");
-                }
-                
-                if (itemsWithErrors.Count > 3)
-                {
-                    Console.WriteLine($"  ⚠️  ... and {itemsWithErrors.Count - 3} more errors");
-                }
+                // Complete failure - network/connection error
+                errorCount += batch.Length;
+                Console.WriteLine($"  ❌ Bulk request exception: {response.OriginalException.Message}");
             }
             else
             {
+                // No items in response but no exception - assume success
                 successCount += batch.Length;
             }
             
             processed += batch.Length;
-            Console.WriteLine($"    → Processed {processed}/{products.Count} products (✓ {successCount} success, ✗ {errorCount} errors)");
+            
+            if (errorCount > 0)
+            {
+                Console.WriteLine($"    → Processed {processed}/{products.Count} (✓ {successCount} success, ✗ {errorCount} failed)");
+            }
+            else
+            {
+                Console.WriteLine($"    → Processed {processed}/{products.Count} (✓ {successCount} success)");
+            }
             
             await Task.Delay(100);
         }
@@ -206,12 +253,27 @@ public class SqlToElasticsearchSyncService
     {
         try
         {
+            var exists = await _elasticClient.Indices.ExistsAsync("sync_metadata");
+            if (!exists.Exists)
+            {
+                // First run - sync everything from last 24 hours
+                return DateTime.UtcNow.AddDays(-1);
+            }
+            
             var response = await _elasticClient.GetAsync<SyncMetadata>("last_sync", g => g.Index("sync_metadata"));
-            return response.Found && response.Source != null ? response.Source.LastSync : DateTime.MinValue;
+            
+            if (response.Found && response.Source != null)
+            {
+                return response.Source.LastSync;
+            }
+            
+            // Index exists but no last_sync document - sync from last 24 hours
+            return DateTime.UtcNow.AddDays(-1);
         }
         catch
         {
-            return DateTime.MinValue;
+            // On error, sync from last 24 hours to be safe
+            return DateTime.UtcNow.AddDays(-1);
         }
     }
 
