@@ -3,15 +3,6 @@
   <component name="CopilotDiffPersistence">
     <option name="pendingDiffs">
       <map>
-        <entry key="$PROJECT_DIR$/.dockerignore">
-          <value>
-            <PendingDiffInfo>
-              <option name="filePath" value="$PROJECT_DIR$/.dockerignore" />
-              <option name="originalContent" value="**/.dockerignore&#10;**/.git&#10;**/.gitignore&#10;**/.vs&#10;**/.vscode&#10;**/.idea&#10;**/*.*proj.user&#10;**/*.dbmdl&#10;**/*.jfm&#10;**/bin&#10;**/obj&#10;**/charts&#10;**/docker-compose*&#10;**/compose*&#10;**/.toolstarget&#10;**/.classpath&#10;**/.project&#10;**/.settings&#10;**/Dockerfile*&#10;**/*.log&#10;**/*.md&#10;**/.DS_Store&#10;LICENSE&#10;README.md&#10;**/node_modules&#10;**/.env&#10;&#10;" />
-              <option name="updatedContent" value="**/.dockerignore&#10;**/.git&#10;**/.gitignore&#10;**/.vs&#10;**/.vscode&#10;**/.idea&#10;**/*.*proj.user&#10;**/*.dbmdl&#10;**/*.jfm&#10;**/bin&#10;**/obj&#10;**/charts&#10;**/docker-compose*&#10;**/compose*&#10;**/.toolstarget&#10;**/.classpath&#10;**/.project&#10;**/.settings&#10;**/Dockerfile*&#10;**/*.log&#10;**/*.md&#10;**/.DS_Store&#10;LICENSE&#10;README.md&#10;**/node_modules&#10;**/.env&#10;**/docker-init&#10;&#10;" />
-            </PendingDiffInfo>
-          </value>
-        </entry>
         <entry key="$PROJECT_DIR$/.env.example">
           <value>
             <PendingDiffInfo>
