@@ -100,6 +100,7 @@ services:
       - ConnectionStrings__SqlServer=Server=sqlserver,1433;Database=ElasticsearchDemo;User Id=sa;Password=Password1234!;TrustServerCertificate=True;
       - ConnectionStrings__Hangfire=Server=sqlserver,1433;Database=ElasticsearchDemo;User Id=sa;Password=Password1234!;TrustServerCertificate=True;
       - Elasticsearch__Uri=http://elasticsearch:9200
+    networks:
       - elastic-network
     depends_on:
       elasticsearch:
