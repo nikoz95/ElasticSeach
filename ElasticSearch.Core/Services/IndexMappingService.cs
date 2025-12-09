@@ -7,44 +7,42 @@ namespace ElasticSearch.Core.Services;
 /// Index creation with custom mappings, analyzers, and settings
 /// Demonstrates: Multi-fields, Nested objects, Custom analyzers, Index templates
 /// </summary>
-public class IndexMappingService
+public class IndexMappingService(ElasticClient elasticClient)
 {
-    private readonly ElasticClient _elasticClient;
-
-    public IndexMappingService(ElasticClient elasticClient)
-    {
-        _elasticClient = elasticClient;
-    }
-
     /// <summary>
     /// Create index with explicit mappings and settings
     /// Shows: Multi-field mappings (text + keyword), nested objects, completion suggester
     /// </summary>
     public async Task<bool> CreateProductIndexWithMappingsAsync(string indexName = "products-v2")
     {
-        var response = await _elasticClient.Indices.CreateAsync(indexName, c => c
+        var response = await elasticClient.Indices.CreateAsync(indexName, c => c
             .Settings(s => s
-                .NumberOfShards(3)           // Horizontal scaling
-                .NumberOfReplicas(1)         // Fault tolerance
-                .RefreshInterval("5s")       // How often new docs become searchable
+                .NumberOfShards(3)           // Horizontal scaling and divided data across nodes for fast reads
+                .NumberOfReplicas(1)         // each shard has 1 replica (backUp) for high availability
+                .RefreshInterval("5s")       // How often new docs become searchable, because index not shown in real-time when writing
                 .Analysis(a => a
                     // Custom Analyzer for product names
                     .Analyzers(an => an
                         .Custom("product_name_analyzer", ca => ca
-                            .Tokenizer("standard")
-                            .Filters("lowercase", "stop", "snowball", "product_synonyms")
+                            .Tokenizer("standard") // Standard tokenizer, that is, splits text into words
+                            .Filters(
+                                "lowercase", // Lowercase filter
+                                "stop", // Remove common words like "the", "a", etc.
+                                "snowball", // Stemming filter (convert words to their root form). ex: "running" -> "run"
+                                "product_synonyms" // Synonym filter (replace words with synonyms)
+                                )
                         )
                         .Custom("autocomplete_analyzer", ca => ca
-                            .Tokenizer("edge_ngram_tokenizer")
+                            .Tokenizer("edge_ngram_tokenizer") // EdgeNGram tokenizer, that is, splits text into n-grams. ex: "laptop" -> "l", "ap", "pt"
                             .Filters("lowercase")
                         )
                     )
                     // Custom Tokenizers
                     .Tokenizers(t => t
-                        .EdgeNGram("edge_ngram_tokenizer", ng => ng
+                        .EdgeNGram("edge_ngram_tokenizer", ng => ng // EdgeNGram tokenizer with custom settings. ex: "laptop" -> "l", "ap", "pt"
                             .MinGram(2)
                             .MaxGram(20)
-                            .TokenChars(TokenChar.Letter, TokenChar.Digit)
+                            .TokenChars(TokenChar.Letter, TokenChar.Digit) // Only letters and digits. ex: "laptop123"
                         )
                     )
                     // Token Filters
@@ -141,11 +139,9 @@ public class IndexMappingService
             Console.WriteLine($"✅ Index '{indexName}' created successfully");
             return true;
         }
-        else
-        {
-            Console.WriteLine($"❌ Failed to create index: {response.DebugInformation}");
-            return false;
-        }
+
+        Console.WriteLine($"❌ Failed to create index: {response.DebugInformation}");
+        return false;
     }
 
     /// <summary>
@@ -154,7 +150,7 @@ public class IndexMappingService
     /// </summary>
     public async Task<bool> CreateProductIndexTemplateAsync()
     {
-        var response = await _elasticClient.Indices.PutTemplateAsync("products-template", tmpl => tmpl
+        var response = await elasticClient.Indices.PutTemplateAsync("products-template", tmpl => tmpl
             .IndexPatterns("products-*")  // Matches: products-2024, products-v2, etc.
             .Settings(s => s
                 .NumberOfShards(2)
@@ -178,11 +174,9 @@ public class IndexMappingService
             Console.WriteLine("✅ Index template created successfully");
             return true;
         }
-        else
-        {
-            Console.WriteLine($"❌ Failed to create template: {response.DebugInformation}");
-            return false;
-        }
+
+        Console.WriteLine($"❌ Failed to create template: {response.DebugInformation}");
+        return false;
     }
 
     /// <summary>
@@ -191,7 +185,7 @@ public class IndexMappingService
     /// </summary>
     public async Task<List<string>> TestAnalyzerAsync(string text, string analyzer = "standard")
     {
-        var response = await _elasticClient.Indices.AnalyzeAsync(a => a
+        var response = await elasticClient.Indices.AnalyzeAsync(a => a
             .Index("products-v2")
             .Text(text)
             .Analyzer(analyzer)
@@ -200,7 +194,7 @@ public class IndexMappingService
         if (!response.IsValid)
         {
             Console.WriteLine($"❌ Analyzer test failed: {response.DebugInformation}");
-            return new List<string>();
+            return [];
         }
 
         Console.WriteLine($"\n🔍 Analyzing: '{text}' with '{analyzer}'");
@@ -223,7 +217,7 @@ public class IndexMappingService
     /// </summary>
     public async Task<string> GetIndexMappingAsync(string indexName = "products")
     {
-        var response = await _elasticClient.Indices.GetMappingAsync<Product>(m => m
+        var response = await elasticClient.Indices.GetMappingAsync<Product>(m => m
             .Index(indexName)
         );
 
@@ -231,35 +225,9 @@ public class IndexMappingService
         {
             return response.DebugInformation;
         }
-        else
-        {
-            Console.WriteLine($"❌ Failed to get mapping: {response.DebugInformation}");
-            return string.Empty;
-        }
-    }
 
-    /// <summary>
-    /// Update mapping (add new fields only - can't change existing)
-    /// </summary>
-    public async Task<bool> UpdateMappingAsync(string indexName = "products")
-    {
-        var response = await _elasticClient.MapAsync<Product>(m => m
-            .Index(indexName)
-            .Properties(p => p
-                .Keyword(k => k.Name("newField"))  // Adding new field
-            )
-        );
-
-        if (response.IsValid)
-        {
-            Console.WriteLine("✅ Mapping updated successfully");
-            return true;
-        }
-        else
-        {
-            Console.WriteLine($"❌ Failed to update mapping: {response.DebugInformation}");
-            return false;
-        }
+        Console.WriteLine($"❌ Failed to get mapping: {response.DebugInformation}");
+        return string.Empty;
     }
 
     /// <summary>
@@ -268,10 +236,10 @@ public class IndexMappingService
     /// </summary>
     public async Task<bool> ReindexAsync(string sourceIndex, string destIndex)
     {
-        var response = await _elasticClient.ReindexOnServerAsync(r => r
+        var response = await elasticClient.ReindexOnServerAsync(r => r
             .Source(s => s.Index(sourceIndex))
             .Destination(d => d.Index(destIndex))
-            .WaitForCompletion(true)
+            .WaitForCompletion()
         );
 
         if (response.IsValid)
@@ -290,7 +258,7 @@ public class IndexMappingService
     /// </summary>
     public async Task<bool> CreateIndexWithAliasAsync(string indexName, string aliasName)
     {
-        var response = await _elasticClient.Indices.CreateAsync(indexName, c => c
+        var response = await elasticClient.Indices.CreateAsync(indexName, c => c
             .Map<Product>(m => m.AutoMap())
             .Aliases(a => a
                 .Alias(aliasName)
@@ -367,7 +335,7 @@ public class IndexMappingService
     /// </summary>
     public async Task<bool> CreateIndexWithAllDataTypesAsync()
     {
-        var response = await _elasticClient.Indices.CreateAsync("demo-data-types", c => c
+        var response = await elasticClient.Indices.CreateAsync("demo-data-types", c => c
             .Map<ProductWithAllDataTypes>(m => m
                 .Properties(p => p
                     .Text(t => t.Name(n => n.TextField))

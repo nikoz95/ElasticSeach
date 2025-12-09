@@ -3,21 +3,14 @@ using ElasticSearch.Core.Models;
 
 namespace ElasticSearch.Core.Services;
 
-public class ProductSearchService
+public class ProductSearchService(ElasticClient elasticClient)
 {
-    private readonly ElasticClient _elasticClient;
-
-    public ProductSearchService(ElasticClient elasticClient)
-    {
-        _elasticClient = elasticClient;
-    }
-
     public async Task<List<Product>> SearchProductsAsync(string query)
     {
-        var response = await _elasticClient.SearchAsync<Product>(s => s
+        var response = await elasticClient.SearchAsync<Product>(s => s
             .Index("products")
             .Query(q => q
-                .MultiMatch(m => m
+                .MultiMatch(m => m // match on multiple fields
                     .Query(query)
                     .Fields(f => f
                         .Field(p => p.Name)
@@ -30,7 +23,7 @@ public class ProductSearchService
 
         if (!response.IsValid || response.Documents == null)
         {
-            return new List<Product>();
+            return [];
         }
 
         return response.Documents.ToList();
@@ -38,22 +31,22 @@ public class ProductSearchService
 
     public async Task<Product?> GetProductByIdAsync(string id)
     {
-        var response = await _elasticClient.GetAsync<Product>(id, g => g.Index("products"));
+        var response = await elasticClient.GetAsync<Product>(id, g => g.Index("products"));
         return response.Found ? response.Source : null;
     }
 
     public async Task<List<Product>> GetProductsByCategoryAsync(string category)
     {
-        var response = await _elasticClient.SearchAsync<Product>(s => s
+        var response = await elasticClient.SearchAsync<Product>(s => s
             .Index("products")
             .Query(q => q
-                .Term(t => t.Field(f => f.Category).Value(category))
+                .Term(t => t.Field(f => f.Category).Value(category)) // exact match
             )
         );
 
         if (!response.IsValid || response.Documents == null)
         {
-            return new List<Product>();
+            return [];
         }
 
         return response.Documents.ToList();
@@ -61,7 +54,7 @@ public class ProductSearchService
 
     public async Task<List<Product>> GetProductsInPriceRangeAsync(decimal minPrice, decimal maxPrice)
     {
-        var response = await _elasticClient.SearchAsync<Product>(s => s
+        var response = await elasticClient.SearchAsync<Product>(s => s
             .Index("products")
             .Query(q => q
                 .Range(r => r
@@ -74,7 +67,7 @@ public class ProductSearchService
 
         if (!response.IsValid || response.Documents == null)
         {
-            return new List<Product>();
+            return [];
         }
 
         return response.Documents.ToList();
@@ -82,7 +75,7 @@ public class ProductSearchService
 
     public async Task<Dictionary<string, long>> GetProductCountByCategoryAsync()
     {
-        var response = await _elasticClient.SearchAsync<Product>(s => s
+        var response = await elasticClient.SearchAsync<Product>(s => s
             .Index("products")
             .Size(0)
             .Aggregations(a => a
@@ -99,12 +92,7 @@ public class ProductSearchService
         }
 
         var termsAggregation = response.Aggregations.Terms("categories");
-        if (termsAggregation?.Buckets == null)
-        {
-            return new Dictionary<string, long>();
-        }
-
-        return termsAggregation.Buckets.ToDictionary(b => b.Key, b => b.DocCount ?? 0);
+        return termsAggregation?.Buckets == null ? new Dictionary<string, long>() : termsAggregation.Buckets.ToDictionary(b => b.Key, b => b.DocCount ?? 0);
     }
 }
 

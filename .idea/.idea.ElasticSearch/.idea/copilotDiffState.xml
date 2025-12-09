@@ -3,15 +3,6 @@
   <component name="CopilotDiffPersistence">
     <option name="pendingDiffs">
       <map>
-        <entry key="$PROJECT_DIR$/.env.example">
-          <value>
-            <PendingDiffInfo>
-              <option name="filePath" value="$PROJECT_DIR$/.env.example" />
-              <option name="originalContent" value="# SQL Server Configuration&#10;SA_PASSWORD=YourStrong@Password123&#10;&#10;# Elasticsearch Configuration&#10;ELASTICSEARCH_URI=http://elasticsearch:9200&#10;&#10;# API Configuration&#10;API_PORT=5000&#10;&#10;# Environment&#10;ASPNETCORE_ENVIRONMENT=Development&#10;&#10;" />
-              <option name="updatedContent" value="# SQL Server Configuration&#10;# SA account (for initial setup only)&#10;SA_PASSWORD=YourStrong@Password123&#10;&#10;# Admin user credentials (used by API and Jobs)&#10;DB_USER=admin&#10;DB_PASSWORD=Password1234&#10;&#10;# Elasticsearch Configuration&#10;ELASTICSEARCH_URI=http://elasticsearch:9200&#10;&#10;# API Configuration&#10;API_PORT=5000&#10;&#10;# Environment&#10;ASPNETCORE_ENVIRONMENT=Development&#10;&#10;" />
-            </PendingDiffInfo>
-          </value>
-        </entry>
         <entry key="$PROJECT_DIR$/ADMIN-USER-SETUP.md">
           <value>
             <PendingDiffInfo>
