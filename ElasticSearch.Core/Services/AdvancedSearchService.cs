@@ -6,15 +6,8 @@ namespace ElasticSearch.Core.Services;
 /// <summary>
 /// Advanced search features: Bool queries, Fuzzy search, Wildcards, Highlighting, etc.
 /// </summary>
-public class AdvancedSearchService
+public class AdvancedSearchService(ElasticClient elasticClient)
 {
-    private readonly ElasticClient _elasticClient;
-
-    public AdvancedSearchService(ElasticClient elasticClient)
-    {
-        _elasticClient = elasticClient;
-    }
-
     /// <summary>
     /// Complex Bool Query: Must + Filter + Should
     /// Example: Search "laptop" in Electronics category under $2000 with boost for featured products
@@ -26,7 +19,7 @@ public class AdvancedSearchService
         int page = 1,
         int pageSize = 20)
     {
-        var response = await _elasticClient.SearchAsync<Product>(s => s
+        var response = await elasticClient.SearchAsync<Product>(s => s
             .Index("products")
             .From((page - 1) * pageSize)
             .Size(pageSize)
@@ -71,7 +64,7 @@ public class AdvancedSearchService
                     // Only active products
                     filters.Add(f => f.Term(t => t.Field(p => p.IsActive).Value(true)));
 
-                    if (filters.Any())
+                    if (filters.Count != 0)
                     {
                         boolQuery = boolQuery.Filter(filters.ToArray());
                     }
@@ -101,24 +94,20 @@ public class AdvancedSearchService
 
         if (!response.IsValid)
         {
-            return new List<Product>();
+            return [];
         }
 
         // Add highlight info to products (for display)
         var products = response.Documents.ToList();
         foreach (var hit in response.Hits)
         {
-            if (hit.Highlight != null && hit.Highlight.Any())
+            if (hit.Highlight == null || !hit.Highlight.Any()) continue;
+            var product = products.FirstOrDefault(p => p.Id == hit.Id);
+            if (product == null) continue;
+            // Store highlights in Description for demo (in real app, return separate DTO)
+            if (hit.Highlight.TryGetValue("description", out var value))
             {
-                var product = products.FirstOrDefault(p => p.Id == hit.Id);
-                if (product != null)
-                {
-                    // Store highlights in Description for demo (in real app, return separate DTO)
-                    if (hit.Highlight.ContainsKey("description"))
-                    {
-                        product.Description = string.Join(" ... ", hit.Highlight["description"]);
-                    }
-                }
+                product.Description = string.Join(" ... ", value);
             }
         }
 
@@ -131,7 +120,7 @@ public class AdvancedSearchService
     /// </summary>
     public async Task<List<Product>> FuzzySearchAsync(string query, int maxEdits = 2)
     {
-        var response = await _elasticClient.SearchAsync<Product>(s => s
+        var response = await elasticClient.SearchAsync<Product>(s => s
             .Index("products")
             .Query(q => q
                 .Match(m => m
@@ -139,14 +128,14 @@ public class AdvancedSearchService
                     .Query(query)
                     .Fuzziness(Fuzziness.Auto)
                     .PrefixLength(2)  // First 2 chars must match exactly
-                    .MaxExpansions(50)
+                    .MaxExpansions(50) // max check 50 variations words, ex: ["laatap", "labtap", ..., "laptop", "laptap", ...]
                 )
             )
         );
 
         return response.IsValid && response.Documents != null 
             ? response.Documents.ToList() 
-            : new List<Product>();
+            : [];
     }
 
     /// <summary>
@@ -156,29 +145,29 @@ public class AdvancedSearchService
     /// </summary>
     public async Task<List<Product>> WildcardSearchAsync(string pattern)
     {
-        var response = await _elasticClient.SearchAsync<Product>(s => s
+        var response = await elasticClient.SearchAsync<Product>(s => s
             .Index("products")
             .Query(q => q
                 .Wildcard(w => w
-                    .Field(f => f.Name.Suffix("keyword"))  // Use keyword field for exact patterns
+                    .Field(f => f.Name.Suffix("keyword"))  // Use keyword field for exact patterns, because ex: Name (text) - not working for wildcard
                     .Value($"*{pattern}*")
-                    .CaseInsensitive(true)
+                    .CaseInsensitive()
                 )
             )
         );
 
         return response.IsValid && response.Documents != null 
             ? response.Documents.ToList() 
-            : new List<Product>();
+            : [];
     }
 
     /// <summary>
-    /// Prefix Search - starts with query
-    /// Faster than wildcard, optimized for autocomplete
+    /// Prefix Search - starts with query ex:"lap" matches "laptop" because "lap" is a prefix of "lap*"
+    /// Faster than wildcard, optimized for autocomplete, because it doesn't check all variations and use index sorting ex:"laptop": [doc1, doc2, doc3], '
     /// </summary>
     public async Task<List<Product>> PrefixSearchAsync(string prefix, int limit = 10)
     {
-        var response = await _elasticClient.SearchAsync<Product>(s => s
+        var response = await elasticClient.SearchAsync<Product>(s => s
             .Index("products")
             .Size(limit)
             .Query(q => q
@@ -192,7 +181,7 @@ public class AdvancedSearchService
 
         return response.IsValid && response.Documents != null 
             ? response.Documents.ToList() 
-            : new List<Product>();
+            : [];
     }
 
     /// <summary>
@@ -201,7 +190,7 @@ public class AdvancedSearchService
     /// </summary>
     public async Task<List<Product>> RegexpSearchAsync(string pattern)
     {
-        var response = await _elasticClient.SearchAsync<Product>(s => s
+        var response = await elasticClient.SearchAsync<Product>(s => s
             .Index("products")
             .Query(q => q
                 .Regexp(r => r
@@ -213,7 +202,7 @@ public class AdvancedSearchService
 
         return response.IsValid && response.Documents != null 
             ? response.Documents.ToList() 
-            : new List<Product>();
+            : [];
     }
 
     /// <summary>
@@ -222,7 +211,7 @@ public class AdvancedSearchService
     /// </summary>
     public async Task<List<Product>> ExistsQueryAsync(string fieldName, bool mustExist = true)
     {
-        var response = await _elasticClient.SearchAsync<Product>(s => s
+        var response = await elasticClient.SearchAsync<Product>(s => s
             .Index("products")
             .Query(q =>
             {
@@ -235,7 +224,7 @@ public class AdvancedSearchService
 
         return response.IsValid && response.Documents != null 
             ? response.Documents.ToList() 
-            : new List<Product>();
+            : [];
     }
 
     /// <summary>
@@ -244,7 +233,7 @@ public class AdvancedSearchService
     /// </summary>
     public async Task<List<Product>> MultiFieldSearchAsync(string query)
     {
-        var response = await _elasticClient.SearchAsync<Product>(s => s
+        var response = await elasticClient.SearchAsync<Product>(s => s
             .Index("products")
             .Query(q => q
                 .Bool(b => b
@@ -268,7 +257,7 @@ public class AdvancedSearchService
 
         return response.IsValid && response.Documents != null 
             ? response.Documents.ToList() 
-            : new List<Product>();
+            : [];
     }
 
     /// <summary>
@@ -277,7 +266,7 @@ public class AdvancedSearchService
     /// </summary>
     public async Task<List<Product>> FunctionScoreSearchAsync(string query)
     {
-        var response = await _elasticClient.SearchAsync<Product>(s => s
+        var response = await elasticClient.SearchAsync<Product>(s => s
             .Index("products")
             .Query(q => q
                 .FunctionScore(fs => fs
@@ -291,24 +280,24 @@ public class AdvancedSearchService
                         // Boost products in stock
                         .Weight(w => w
                             .Filter(fi => fi.Range(r => r.Field(p => p.Stock).GreaterThan(0)))
-                            .Weight(1.5)
+                            .Weight(1.5)  // Score = 1.5
                         )
                         // Boost cheaper products
                         .FieldValueFactor(fv => fv
                             .Field(p => p.Price)
                             .Modifier(FieldValueFactorModifier.Reciprocal)
-                            .Factor(0.1)
+                            .Factor(0.1)  // Score = 0.1 / Price
                         )
                     )
-                    .ScoreMode(FunctionScoreMode.Multiply)
-                    .BoostMode(FunctionBoostMode.Multiply)
+                    .ScoreMode(FunctionScoreMode.Multiply) // 1.5 × 0.5 = 0.75
+                    .BoostMode(FunctionBoostMode.Multiply) // 5.0 × 0.75 = 3.75
                 )
             )
         );
 
         return response.IsValid && response.Documents != null 
             ? response.Documents.ToList() 
-            : new List<Product>();
+            : [];
     }
 
     /// <summary>
@@ -317,9 +306,9 @@ public class AdvancedSearchService
     /// </summary>
     public async Task<List<string>> GetSuggestionsAsync(string query)
     {
-        var response = await _elasticClient.SearchAsync<Product>(s => s
+        var response = await elasticClient.SearchAsync<Product>(s => s
             .Index("products")
-            .Size(0)
+            .Size(0) // not returning any documents, just suggestions
             .Suggest(sg => sg
                 .Term("name-suggestions", t => t
                     .Field(f => f.Name)
@@ -331,17 +320,10 @@ public class AdvancedSearchService
 
         if (!response.IsValid || response.Suggest == null)
         {
-            return new List<string>();
+            return [];
         }
 
-        var suggestions = new List<string>();
-        foreach (var suggestion in response.Suggest.Values)
-        {
-            foreach (var option in suggestion.SelectMany(s => s.Options))
-            {
-                suggestions.Add(option.Text);
-            }
-        }
+        var suggestions = (from suggestion in response.Suggest.Values from option in suggestion.SelectMany(s => s.Options) select option.Text).ToList();
 
         return suggestions.Distinct().ToList();
     }
@@ -354,7 +336,7 @@ public class AdvancedSearchService
         int page = 1, 
         int pageSize = 20)
     {
-        var response = await _elasticClient.SearchAsync<Product>(s => s
+        var response = await elasticClient.SearchAsync<Product>(s => s
             .Index("products")
             .From((page - 1) * pageSize)
             .Size(pageSize)
@@ -364,12 +346,12 @@ public class AdvancedSearchService
                     .Fields(f => f.Field(p => p.Name).Field(p => p.Description))
                 )
             )
-            .TrackTotalHits(true)
+            .TrackTotalHits() // return total count
         );
 
         if (!response.IsValid || response.Documents == null)
         {
-            return (new List<Product>(), 0);
+            return ([], 0);
         }
 
         return (response.Documents.ToList(), response.Total);
