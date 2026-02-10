@@ -50,7 +50,7 @@ public class AdvancedSearchService(ElasticClient elasticClient)
                     
                     if (!string.IsNullOrEmpty(category))
                     {
-                        filters.Add(f => f.Term(t => t.Field(p => p.Category.Suffix("keyword")).Value(category.ToLower())));
+                        filters.Add(f => f.Match(m => m.Field(p => p.Category).Query(category)));
                     }
 
                     if (maxPrice.HasValue)

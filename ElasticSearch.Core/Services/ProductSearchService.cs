@@ -40,7 +40,10 @@ public class ProductSearchService(ElasticClient elasticClient)
         var response = await elasticClient.SearchAsync<Product>(s => s
             .Index("products")
             .Query(q => q
-                .Term(t => t.Field(f => f.Category.Suffix("keyword")).Value(category.ToLower()))
+                .Match(m => m
+                    .Field(f => f.Category)
+                    .Query(category)
+                )
             )
         );
 
