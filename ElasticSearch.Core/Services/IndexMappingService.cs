@@ -230,6 +230,7 @@ public class IndexMappingService(ElasticClient elasticClient)
         return string.Empty;
     }
 
+    //not working
     /// <summary>
     /// Reindex data from old index to new index
     /// Useful when you need to change mapping of existing fields
@@ -252,6 +253,7 @@ public class IndexMappingService(ElasticClient elasticClient)
         return false;
     }
 
+    
     /// <summary>
     /// Create index with alias
     /// Aliases allow zero-downtime reindexing

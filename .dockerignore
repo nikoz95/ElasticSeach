@@ -1,4 +1,4 @@
-﻿**/.dockerignore
+﻿﻿**/.dockerignore
 **/.git
 **/.gitignore
 **/.vs
@@ -7,7 +7,9 @@
 **/*.*proj.user
 **/*.dbmdl
 **/*.jfm
-**/bin
+**/bin/Debug
+**/bin/x64
+**/bin/x86
 **/obj
 **/charts
 **/docker-compose*
@@ -25,4 +27,7 @@ README.md
 **/node_modules
 **/.env
 **/docker-init
+
+# Allow bin/Release/net9.0/publish (needed for Docker copy)
+!**/bin/Release/net9.0/publish
 

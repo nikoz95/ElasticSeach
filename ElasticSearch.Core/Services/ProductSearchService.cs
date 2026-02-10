@@ -40,7 +40,7 @@ public class ProductSearchService(ElasticClient elasticClient)
         var response = await elasticClient.SearchAsync<Product>(s => s
             .Index("products")
             .Query(q => q
-                .Term(t => t.Field(f => f.Category).Value(category)) // exact match
+                .Term(t => t.Field(f => f.Category.Suffix("keyword")).Value(category.ToLower()))
             )
         );
 
@@ -80,7 +80,7 @@ public class ProductSearchService(ElasticClient elasticClient)
             .Size(0)
             .Aggregations(a => a
                 .Terms("categories", t => t
-                    .Field(f => f.Category)
+                    .Field(f => f.Category.Suffix("keyword"))
                     .Size(50)
                 )
             )

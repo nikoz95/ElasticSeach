@@ -38,14 +38,35 @@ dotnet run
 
 ### 🐳 ვარიანტი 2: Full Docker Stack
 
-**SQL Server, Elasticsearch, API, Jobs - ყველაფერი Docker-ში**
+**Elasticsearch, API, Jobs - ყველაფერი Docker-ში**
 
-```bash
-# ყველაფრის გაშვება
+#### პირველი გაშვება:
+
+```powershell
+# 1. Publish .NET პროექტები
+dotnet publish ElasticSearch.Api/ElasticSearch.Api.csproj -c Release
+dotnet publish ElasticSearch.Jobs/ElasticSearch.Jobs.csproj -c Release
+
+# 2. Build Docker images
+docker-compose build --no-cache
+
+# 3. Start all services
 docker-compose up -d
+```
 
-# ან rebuild-ით
-docker-compose up -d --build
+#### კოდის ცვლილების შემდეგ:
+
+```powershell
+# 1. Stop containers
+docker-compose down
+
+# 2. Republish changed projects
+dotnet publish ElasticSearch.Api/ElasticSearch.Api.csproj -c Release
+dotnet publish ElasticSearch.Jobs/ElasticSearch.Jobs.csproj -c Release
+
+# 3. Rebuild and restart
+docker-compose build --no-cache api jobs
+docker-compose up -d
 ```
 
 **Connection String**: `Server=sqlserver,1433` - SQL Authentication (sa/Password1234!) ✅
@@ -181,6 +202,39 @@ POST /api/index/recreate
 
 ---
 
+## 🧪 ტესტირება
+
+### Endpoints-ის ტესტირება
+
+```powershell
+# ყველა endpoint-ის ტესტირება
+.\test-endpoints.ps1
+
+# Autocomplete endpoint-ის ტესტირება
+.\test-autocomplete.ps1
+```
+
+### ხელით ტესტირება (curl)
+
+```powershell
+# Basic Search
+curl.exe "http://localhost:5000/api/products/search?query=macbook"
+
+# Autocomplete
+curl.exe "http://localhost:5000/api/advancedsearch/autocomplete?prefix=mac"
+
+# Category Filter
+curl.exe "http://localhost:5000/api/products/category/laptops"
+
+# Fuzzy Search
+curl.exe "http://localhost:5000/api/advancedsearch/fuzzy?query=mackbok"
+
+# Complex Search with Filters
+curl.exe "http://localhost:5000/api/advancedsearch/complex?query=macbook&category=laptops&maxPrice=3000"
+```
+
+---
+
 ## 🛠️ Development
 
 ### Prerequisites
@@ -201,45 +255,77 @@ dotnet test
 ```
 
 ### Docker Build
-```bash
-# Build all services
-docker-compose build
 
-# Build specific service
-docker-compose build api
-docker-compose build jobs
+**მნიშვნელოვანი**: Docker არ აბილდებს კოდს - იყენებს pre-published files-ს
 
-# No cache build
+```powershell
+# 1. Publish ცვლილებები
+dotnet publish ElasticSearch.Api/ElasticSearch.Api.csproj -c Release
+dotnet publish ElasticSearch.Jobs/ElasticSearch.Jobs.csproj -c Release
+
+# 2. Build Docker images
 docker-compose build --no-cache
+
+# 3. Start containers
+docker-compose up -d
 ```
+
+**რატომ ასე?**
+- ✅ ამცირებს Docker build time-ს
+- ✅ თავიდან აიცილებს SSL certificate პრობლემებს NuGet restore-ში
+- ✅ უზრუნველყოფს რომ ყველაზე ბოლო ცვლილებები Docker-ში იქნება
 
 ---
 
 ## 🐛 Troubleshooting
 
-### LocalDB არ მუშაობს Docker-ში
-LocalDB არის Windows-only და Docker Linux containers-ში არ მუშაობს.  
-**გადაწყვეტა**: გამოიყენეთ Hybrid setup (Elasticsearch Docker-ში, API/Jobs locally).
+### API არ აბრუნებს შედეგებს
+```powershell
+# შეამოწმე რომ publish გაკეთდა
+dir ElasticSearch.Api\bin\Release\net9.0\publish\ElasticSearch.Api.dll
 
-### SQL Server container არ ეშვება
-```bash
-# Check logs
-docker-compose logs sqlserver
+# თუ არ არსებობს, გააკეთე publish
+dotnet publish ElasticSearch.Api/ElasticSearch.Api.csproj -c Release
 
-# Restart
-docker-compose restart sqlserver
+# Rebuild Docker image
+docker-compose build --no-cache api
+docker-compose up -d
+```
 
-# Clean restart
-docker-compose down -v
+### კოდის ცვლილებები არ ჩანს Docker-ში
+```powershell
+# 1. Stop all containers
+docker-compose down
+
+# 2. Republish
+dotnet publish ElasticSearch.Api/ElasticSearch.Api.csproj -c Release
+dotnet publish ElasticSearch.Jobs/ElasticSearch.Jobs.csproj -c Release
+
+# 3. Rebuild და Restart
+docker-compose build --no-cache api jobs
 docker-compose up -d
 ```
 
 ### Elasticsearch არ არის healthy
-```bash
+```powershell
 # Check cluster health
-curl http://localhost:9200/_cluster/health
+curl.exe http://localhost:9200/_cluster/health
 
 # Check logs
+docker-compose logs elasticsearch
+
+# Restart
+docker-compose restart elasticsearch
+```
+
+### Containers-ის სტატუსის შემოწმება
+```powershell
+# ყველა container
+docker ps
+
+# Specific container logs
+docker-compose logs api
+docker-compose logs jobs
 docker-compose logs elasticsearch
 ```
 
@@ -247,10 +333,11 @@ docker-compose logs elasticsearch
 
 ## 📝 Notes
 
-- **Production**: არ გამოიყენოთ default პაროლები production-ში
-- **Security**: `.env` ფაილი დამატებულია `.gitignore`-ში
-- **LocalDB**: იდეალურია local development-სთვის, არა production-სთვის
-- **Docker**: სრული stack Docker-ში - production-ready setup
+- ✅ **Docker არ აბილდებს კოდს** - იყენებს pre-published files-ს local build-იდან
+- ✅ **კოდის ცვლილებისას** - ყოველთვის გააკეთე `dotnet publish` და შემდეგ `docker-compose build`
+- ✅ **bin/ და obj/ folders** - `.gitignore`-ში დაემატა, მაგრამ `bin/Release/net9.0/publish` არ არის ignore-დ
+- ✅ **SSL პრობლემების თავიდან ასაცილებლად** - local publish გამოიყენება
+- ✅ **ტესტის სკრიპტები** - `test-endpoints.ps1` და `test-autocomplete.ps1` ყველა endpoint-ის შესამოწმებლად
 
 ---
 

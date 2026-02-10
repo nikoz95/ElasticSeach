@@ -10,11 +10,11 @@ public class AdvancedSearchService(ElasticClient elasticClient)
 {
     /// <summary>
     /// Complex Bool Query: Must + Filter + Should
-    /// Example: Search "laptop" in Electronics category under $2000 with boost for featured products
+    /// Example: Search "laptop" in Laptops category under $2000 with boost for featured products
     /// </summary>
     public async Task<List<Product>> ComplexBoolSearchAsync(
         string query, 
-        string? category = null, 
+        string? category = null,
         decimal? maxPrice = null,
         int page = 1,
         int pageSize = 20)
@@ -50,7 +50,7 @@ public class AdvancedSearchService(ElasticClient elasticClient)
                     
                     if (!string.IsNullOrEmpty(category))
                     {
-                        filters.Add(f => f.Term(t => t.Field(p => p.Category).Value(category)));
+                        filters.Add(f => f.Term(t => t.Field(p => p.Category.Suffix("keyword")).Value(category.ToLower())));
                     }
 
                     if (maxPrice.HasValue)
@@ -149,8 +149,8 @@ public class AdvancedSearchService(ElasticClient elasticClient)
             .Index("products")
             .Query(q => q
                 .Wildcard(w => w
-                    .Field(f => f.Name.Suffix("keyword"))  // Use keyword field for exact patterns, because ex: Name (text) - not working for wildcard
-                    .Value($"*{pattern}*")
+                    .Field(f => f.Name.Suffix("keyword"))
+                    .Value($"*{pattern.ToLower()}*")
                     .CaseInsensitive()
                 )
             )
@@ -162,8 +162,8 @@ public class AdvancedSearchService(ElasticClient elasticClient)
     }
 
     /// <summary>
-    /// Prefix Search - starts with query ex:"lap" matches "laptop" because "lap" is a prefix of "lap*"
-    /// Faster than wildcard, optimized for autocomplete, because it doesn't check all variations and use index sorting ex:"laptop": [doc1, doc2, doc3], '
+    /// Prefix Search - starts with query ex:"mac" matches "macbook" because "mac" is a prefix
+    /// Faster than wildcard, optimized for autocomplete
     /// </summary>
     public async Task<List<Product>> PrefixSearchAsync(string prefix, int limit = 10)
     {
@@ -171,9 +171,9 @@ public class AdvancedSearchService(ElasticClient elasticClient)
             .Index("products")
             .Size(limit)
             .Query(q => q
-                .Prefix(p => p
-                    .Field(f => f.Name.Suffix("keyword"))
-                    .Value(prefix)
+                .MatchPhrasePrefix(m => m
+                    .Field(f => f.Name)
+                    .Query(prefix)
                 )
             )
             .Sort(so => so.Ascending(p => p.Name.Suffix("keyword")))

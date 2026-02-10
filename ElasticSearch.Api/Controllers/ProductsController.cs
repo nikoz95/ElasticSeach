@@ -17,8 +17,15 @@ public class ProductsController : ControllerBase
     }
 
     /// <summary>
-    /// Search products by query
+    /// Search products - მარტივი ძებნა სახელის და აღწერის მიხედვით
     /// </summary>
+    /// <remarks>
+    /// Example request:
+    /// 
+    ///     GET /api/products/search?query=macbook
+    ///     
+    /// Response: MacBook Pro პროდუქტების სია
+    /// </remarks>
     [HttpGet("search")]
     public async Task<ActionResult<List<Product>>> Search([FromQuery] string query)
     {
@@ -30,8 +37,15 @@ public class ProductsController : ControllerBase
     }
 
     /// <summary>
-    /// Get product by ID
+    /// Get product by ID - კონკრეტული პროდუქტის მოძებნა ID-ის მიხედვით
     /// </summary>
+    /// <remarks>
+    /// Example request:
+    /// 
+    ///     GET /api/products/1
+    ///     
+    /// Response: პროდუქტი ID=1 (MacBook Pro 16" M3)
+    /// </remarks>
     [HttpGet("{id}")]
     public async Task<ActionResult<Product>> GetById(string id)
     {
@@ -44,8 +58,17 @@ public class ProductsController : ControllerBase
     }
 
     /// <summary>
-    /// Get products by category
+    /// Get products by category - კატეგორიის მიხედვით ფილტრაცია
     /// </summary>
+    /// <remarks>
+    /// Example requests:
+    /// 
+    ///     GET /api/products/category/laptops
+    ///     GET /api/products/category/smartphones
+    ///     GET /api/products/category/audio
+    ///     
+    /// Response: კატეგორიის ყველა პროდუქტი
+    /// </remarks>
     [HttpGet("category/{category}")]
     public async Task<ActionResult<List<Product>>> GetByCategory(string category)
     {
@@ -54,8 +77,16 @@ public class ProductsController : ControllerBase
     }
 
     /// <summary>
-    /// Get products by price range
+    /// Get products by price range - ფასის დიაპაზონით ფილტრაცია
     /// </summary>
+    /// <remarks>
+    /// Example requests:
+    /// 
+    ///     GET /api/products/price-range?min=1000&amp;max=3000
+    ///     GET /api/products/price-range?min=300&amp;max=500
+    ///     
+    /// Response: მითითებულ ფასის დიაპაზონში მყოფი პროდუქტები
+    /// </remarks>
     [HttpGet("price-range")]
     public async Task<ActionResult<List<Product>>> GetByPriceRange([FromQuery] decimal min, [FromQuery] decimal max)
     {
@@ -67,8 +98,15 @@ public class ProductsController : ControllerBase
     }
 
     /// <summary>
-    /// Get product count by category
+    /// Get category statistics - კატეგორიების სტატისტიკა (aggregation)
     /// </summary>
+    /// <remarks>
+    /// Example request:
+    /// 
+    ///     GET /api/products/categories/stats
+    ///     
+    /// Response: { "laptops": 6, "smartphones": 4, "audio": 2 }
+    /// </remarks>
     [HttpGet("categories/stats")]
     public async Task<ActionResult<Dictionary<string, long>>> GetCategoryStats()
     {

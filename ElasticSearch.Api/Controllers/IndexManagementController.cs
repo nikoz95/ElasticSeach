@@ -16,32 +16,51 @@ public class IndexManagementController : ControllerBase
     }
 
     /// <summary>
-    /// Create index with custom mappings and analyzers
+    /// Get index mapping - ინდექსის სტრუქტურის ნახვა
     /// </summary>
-    [HttpPost("create-advanced")]
-    public async Task<ActionResult<object>> CreateAdvancedIndex([FromQuery] string indexName = "products-v2")
+    /// <remarks>
+    /// Example request:
+    /// 
+    ///     GET /api/indexmanagement/mapping/products
+    ///     
+    /// Response: ინდექსის სრული mapping (fields, types, analyzers)
+    /// </remarks>
+    [HttpGet("mapping/{indexName}")]
+    public async Task<ActionResult<object>> GetMapping(string indexName)
+    {
+        var mapping = await _mappingService.GetIndexMappingAsync(indexName);
+        return Ok(new { Index = indexName, Mapping = mapping });
+    }
+
+    /// <summary>
+    /// Recreate index - ინდექსის თავიდან შექმნა (ძველი წაიშლება)
+    /// </summary>
+    /// <remarks>
+    /// Example request:
+    /// 
+    ///     POST /api/indexmanagement/recreate?indexName=products
+    ///     
+    /// გაფრთხილება: წაიშლება ძველი ინდექსი და შეიქმნება ახალი
+    /// </remarks>
+    [HttpPost("recreate")]
+    public async Task<ActionResult<object>> RecreateIndex([FromQuery] string indexName = "products")
     {
         var result = await _mappingService.CreateProductIndexWithMappingsAsync(indexName);
         return result
-            ? Ok(new { Success = true, Message = $"Index '{indexName}' created successfully" })
-            : BadRequest(new { Success = false, Message = "Failed to create index" });
+            ? Ok(new { Success = true, Message = $"Index '{indexName}' recreated successfully" })
+            : BadRequest(new { Success = false, Message = "Failed to recreate index" });
     }
 
     /// <summary>
-    /// Create index template for all indices matching pattern
+    /// Test analyzer - analyzer-ის ტეს��ირება (როგორ დაიშლება ტექსტი tokens-ად)
     /// </summary>
-    [HttpPost("create-template")]
-    public async Task<ActionResult<object>> CreateIndexTemplate()
-    {
-        var result = await _mappingService.CreateProductIndexTemplateAsync();
-        return result
-            ? Ok(new { Success = true, Message = "Index template created successfully" })
-            : BadRequest(new { Success = false, Message = "Failed to create template" });
-    }
-
-    /// <summary>
-    /// Test analyzer with sample text
-    /// </summary>
+    /// <remarks>
+    /// Example request:
+    /// 
+    ///     POST /api/indexmanagement/test-analyzer?text=MacBook Pro 16&amp;analyzer=standard
+    ///     
+    /// Response: ["macbook", "pro", "16"] - tokens after analysis
+    /// </remarks>
     [HttpPost("test-analyzer")]
     public async Task<ActionResult<object>> TestAnalyzer(
         [FromQuery] string text,
@@ -52,18 +71,15 @@ public class IndexManagementController : ControllerBase
     }
 
     /// <summary>
-    /// Get mapping for an index
+    /// Reindex data - მონაცემების გადატანა ერთი ინდექსიდან მეორეში
     /// </summary>
-    [HttpGet("mapping/{indexName}")]
-    public async Task<ActionResult<object>> GetMapping(string indexName)
-    {
-        var mapping = await _mappingService.GetIndexMappingAsync(indexName);
-        return Ok(new { Index = indexName, Mapping = mapping });
-    }
-
-    /// <summary>
-    /// Reindex data from one index to another
-    /// </summary>
+    /// <remarks>
+    /// Example request:
+    /// 
+    ///     POST /api/indexmanagement/reindex?sourceIndex=products-old&amp;destIndex=products-new
+    ///     
+    /// გამოიყენება ინდექსის განახლებისას zero-downtime migration-სთვის
+    /// </remarks>
     [HttpPost("reindex")]
     public async Task<ActionResult<object>> Reindex(
         [FromQuery] string sourceIndex,
@@ -73,32 +89,6 @@ public class IndexManagementController : ControllerBase
         return result
             ? Ok(new { Success = true, Message = $"Reindexed from '{sourceIndex}' to '{destIndex}'" })
             : BadRequest(new { Success = false, Message = "Reindex failed" });
-    }
-
-    /// <summary>
-    /// Create index with alias (for zero-downtime reindexing)
-    /// </summary>
-    [HttpPost("create-with-alias")]
-    public async Task<ActionResult<object>> CreateIndexWithAlias(
-        [FromQuery] string indexName,
-        [FromQuery] string aliasName)
-    {
-        var result = await _mappingService.CreateIndexWithAliasAsync(indexName, aliasName);
-        return result
-            ? Ok(new { Success = true, Message = $"Index '{indexName}' created with alias '{aliasName}'" })
-            : BadRequest(new { Success = false, Message = "Failed to create index with alias" });
-    }
-
-    /// <summary>
-    /// Create demo index with all data types
-    /// </summary>
-    [HttpPost("create-demo-data-types")]
-    public async Task<ActionResult<object>> CreateDemoDataTypes()
-    {
-        var result = await _mappingService.CreateIndexWithAllDataTypesAsync();
-        return result
-            ? Ok(new { Success = true, Message = "Demo index with all data types created" })
-            : BadRequest(new { Success = false, Message = "Failed to create demo index" });
     }
 }
 
