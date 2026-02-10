@@ -24,7 +24,7 @@ public class AdvancedSearchService(ElasticClient elasticClient)
             .From((page - 1) * pageSize)
             .Size(pageSize)
             .Query(q => q
-                .Bool(b =>
+                .Bool(b => // Build a bool query with MUST, FILTER, and SHOULD clauses
                 {
                     var boolQuery = b;
 
@@ -35,17 +35,26 @@ public class AdvancedSearchService(ElasticClient elasticClient)
                             .MultiMatch(mm => mm
                                 .Query(query)
                                 .Fields(f => f
-                                    .Field(p => p.Name, boost: 2.0)  // Name more important
+                                    .Field(p => p.Name, boost: 2.0)  // Name more important than description
                                     .Field(p => p.Description)
                                     .Field(p => p.Category)
                                 )
-                                .Type(TextQueryType.BestFields)
-                                .Fuzziness(Fuzziness.Auto)
+                                .Type(TextQueryType.BestFields) // Use best_fields to get the highest score from any field
+                                .Fuzziness(Fuzziness.Auto) // Allow typos in the main query (e.g., "laptap" → "laptop"
                             )
                         );
                     }
+                    
+                    //BestFields is the default for multi_match, it calculates the score based on the best matching field.
+                    //MostFields calculates the score based on the total number of matching fields.
+                    // CrossFields treats multiple fields as a single field, useful for searching across related fields (e.g., first_name + last_name).
+                    // Phrase and PhrasePrefix are for exact phrase matching, with optional prefix support for autocomplete.
+                    // Fuzziness allows for typo tolerance, with Auto adjusting based on query length (1-2 chars = 0 edits, 3-5 chars = 1 edit, 5+ chars = 2 edits).
 
                     // FILTER: Exact match, no scoring (faster)
+                    // Functions for dynamic filters based on optional parameters
+                    // QueryContainerDescriptor and QueryContainer are used to build complex queries in a fluent way. 
+                    // BoolQuery is alternative to BoolQueryDescriptor, it allows you to build a bool query with multiple clauses (must, filter, should, must_not) in a more flexible way.
                     var filters = new List<Func<QueryContainerDescriptor<Product>, QueryContainer>>();
                     
                     if (!string.IsNullOrEmpty(category))
@@ -139,29 +148,6 @@ public class AdvancedSearchService(ElasticClient elasticClient)
     }
 
     /// <summary>
-    /// Wildcard Search - pattern matching (* = any chars, ? = single char)
-    /// Example: "lap*" matches "laptop", "lapel", etc.
-    /// WARNING: Slow on large datasets, use carefully!
-    /// </summary>
-    public async Task<List<Product>> WildcardSearchAsync(string pattern)
-    {
-        var response = await elasticClient.SearchAsync<Product>(s => s
-            .Index("products")
-            .Query(q => q
-                .Wildcard(w => w
-                    .Field(f => f.Name.Suffix("keyword"))
-                    .Value($"*{pattern.ToLower()}*")
-                    .CaseInsensitive()
-                )
-            )
-        );
-
-        return response.IsValid && response.Documents != null 
-            ? response.Documents.ToList() 
-            : [];
-    }
-
-    /// <summary>
     /// Prefix Search - starts with query ex:"mac" matches "macbook" because "mac" is a prefix
     /// Faster than wildcard, optimized for autocomplete
     /// </summary>
@@ -182,150 +168,6 @@ public class AdvancedSearchService(ElasticClient elasticClient)
         return response.IsValid && response.Documents != null 
             ? response.Documents.ToList() 
             : [];
-    }
-
-    /// <summary>
-    /// Regexp Search - regular expressions
-    /// Example: "lap[a-z]{3}" matches "laptop"
-    /// </summary>
-    public async Task<List<Product>> RegexpSearchAsync(string pattern)
-    {
-        var response = await elasticClient.SearchAsync<Product>(s => s
-            .Index("products")
-            .Query(q => q
-                .Regexp(r => r
-                    .Field(f => f.Name.Suffix("keyword"))
-                    .Value(pattern)
-                )
-            )
-        );
-
-        return response.IsValid && response.Documents != null 
-            ? response.Documents.ToList() 
-            : [];
-    }
-
-    /// <summary>
-    /// Search products that have (or don't have) a specific field
-    /// Example: Find products with/without specifications
-    /// </summary>
-    public async Task<List<Product>> ExistsQueryAsync(string fieldName, bool mustExist = true)
-    {
-        var response = await elasticClient.SearchAsync<Product>(s => s
-            .Index("products")
-            .Query(q =>
-            {
-                var existsQuery = q.Exists(e => e.Field(fieldName));
-                return mustExist 
-                    ? existsQuery 
-                    : q.Bool(b => b.MustNot(existsQuery));
-            })
-        );
-
-        return response.IsValid && response.Documents != null 
-            ? response.Documents.ToList() 
-            : [];
-    }
-
-    /// <summary>
-    /// Multi-field search with different analyzers
-    /// Searches both exact (keyword) and analyzed (text) versions
-    /// </summary>
-    public async Task<List<Product>> MultiFieldSearchAsync(string query)
-    {
-        var response = await elasticClient.SearchAsync<Product>(s => s
-            .Index("products")
-            .Query(q => q
-                .Bool(b => b
-                    .Should(
-                        // Exact match on keyword field (higher boost)
-                        sh => sh.Term(t => t
-                            .Field(f => f.Name.Suffix("keyword"))
-                            .Value(query)
-                            .Boost(2.0)
-                        ),
-                        // Analyzed match on text field
-                        sh => sh.Match(m => m
-                            .Field(f => f.Name)
-                            .Query(query)
-                            .Boost(1.0)
-                        )
-                    )
-                )
-            )
-        );
-
-        return response.IsValid && response.Documents != null 
-            ? response.Documents.ToList() 
-            : [];
-    }
-
-    /// <summary>
-    /// Function Score Query - Custom scoring based on business logic
-    /// Example: Boost popular products or recently added items
-    /// </summary>
-    public async Task<List<Product>> FunctionScoreSearchAsync(string query)
-    {
-        var response = await elasticClient.SearchAsync<Product>(s => s
-            .Index("products")
-            .Query(q => q
-                .FunctionScore(fs => fs
-                    .Query(fq => fq
-                        .MultiMatch(m => m
-                            .Query(query)
-                            .Fields(f => f.Field(p => p.Name).Field(p => p.Description))
-                        )
-                    )
-                    .Functions(funcs => funcs
-                        // Boost products in stock
-                        .Weight(w => w
-                            .Filter(fi => fi.Range(r => r.Field(p => p.Stock).GreaterThan(0)))
-                            .Weight(1.5)  // Score = 1.5
-                        )
-                        // Boost cheaper products
-                        .FieldValueFactor(fv => fv
-                            .Field(p => p.Price)
-                            .Modifier(FieldValueFactorModifier.Reciprocal)
-                            .Factor(0.1)  // Score = 0.1 / Price
-                        )
-                    )
-                    .ScoreMode(FunctionScoreMode.Multiply) // 1.5 × 0.5 = 0.75
-                    .BoostMode(FunctionBoostMode.Multiply) // 5.0 × 0.75 = 3.75
-                )
-            )
-        );
-
-        return response.IsValid && response.Documents != null 
-            ? response.Documents.ToList() 
-            : [];
-    }
-
-    /// <summary>
-    /// Get search suggestions (did you mean?)
-    /// Uses term suggester for typo corrections
-    /// </summary>
-    public async Task<List<string>> GetSuggestionsAsync(string query)
-    {
-        var response = await elasticClient.SearchAsync<Product>(s => s
-            .Index("products")
-            .Size(0) // not returning any documents, just suggestions
-            .Suggest(sg => sg
-                .Term("name-suggestions", t => t
-                    .Field(f => f.Name)
-                    .Text(query)
-                    .Size(5)
-                )
-            )
-        );
-
-        if (!response.IsValid || response.Suggest == null)
-        {
-            return [];
-        }
-
-        var suggestions = (from suggestion in response.Suggest.Values from option in suggestion.SelectMany(s => s.Options) select option.Text).ToList();
-
-        return suggestions.Distinct().ToList();
     }
 
     /// <summary>
