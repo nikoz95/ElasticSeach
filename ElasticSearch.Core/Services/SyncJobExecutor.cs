@@ -9,7 +9,7 @@ public static class SyncJobExecutor
 {
     private static string? _sqlConnectionString;
     private static string? _elasticsearchUri;
-    
+
     public static void Initialize(string sqlConnectionString, string elasticsearchUri)
     {
         _sqlConnectionString = sqlConnectionString;
@@ -42,7 +42,7 @@ public static class SyncJobExecutor
         
         var settings = new ConnectionSettings(new Uri(_elasticsearchUri))
             .DefaultIndex("products")
-            .DisableDirectStreaming();
+            .DisableDirectStreaming(); // DisableDirectStreaming for better error diagnostics in case of sync failures
         
         var elasticClient = new ElasticClient(settings);
         var syncService = new SqlToElasticsearchSyncService(elasticClient, _sqlConnectionString);

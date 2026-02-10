@@ -1,4 +1,4 @@
-﻿﻿using Hangfire;
+﻿using Hangfire;
 using Hangfire.SqlServer;
 using Microsoft.Extensions.Configuration;
 using Nest;
@@ -110,7 +110,7 @@ Console.WriteLine("  ✓ Full Sync: Weekly (Sunday 3:00 AM)");
 Console.WriteLine();
 
 // Start Hangfire server
-using var server = new BackgroundJobServer(new BackgroundJobServerOptions
+var backgroundJobServer = new BackgroundJobServer(new BackgroundJobServerOptions
 {
     WorkerCount = 2,
     ServerName = "ElasticSearchSyncServer",
@@ -142,7 +142,7 @@ Console.WriteLine();
 
 // Keep running
 var exitEvent = new ManualResetEvent(false);
-Console.CancelKeyPress += (sender, e) =>
+Console.CancelKeyPress += (_, e) =>
 {
     e.Cancel = true;
     exitEvent.Set();
@@ -152,4 +152,3 @@ exitEvent.WaitOne();
 
 Console.WriteLine();
 Console.WriteLine("🛑 Shutting down...");
-
