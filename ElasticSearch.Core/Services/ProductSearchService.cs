@@ -80,10 +80,10 @@ public class ProductSearchService(ElasticClient elasticClient)
     {
         var response = await elasticClient.SearchAsync<Product>(s => s
             .Index("products")
-            .Size(0)
+            .Size(0) // No need to return actual documents, we only care about aggregations
             .Aggregations(a => a
-                .Terms("categories", t => t
-                    .Field(f => f.Category.Suffix("keyword"))
+                .Terms("categories", t => t // Terms არის aggregation რომელიც გვაძლევს უნიკალურ მნიშვნელობებს და მათი რაოდენობას
+                    .Field(f => f.Category.Suffix("keyword")) // suffix("keyword") იმიტომ რომ category არის text ტიპის და ჩვენ გვინდა მისი keyword ვერსია რომელიც არ არის analyzed და გვაძლევს ზუსტ მნიშვნელობებს
                     .Size(50)
                 )
             )
