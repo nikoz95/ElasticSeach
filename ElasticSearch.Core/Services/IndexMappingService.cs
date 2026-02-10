@@ -42,7 +42,7 @@ public class IndexMappingService(ElasticClient elasticClient)
                         .EdgeNGram("edge_ngram_tokenizer", ng => ng // EdgeNGram tokenizer with custom settings. ex: "laptop" -> "l", "ap", "pt"
                             .MinGram(2)
                             .MaxGram(20)
-                            .TokenChars(TokenChar.Letter, TokenChar.Digit) // Only letters and digits. ex: "laptop123"
+                            .TokenChars(TokenChar.Letter, TokenChar.Digit) // Only letters and digits. ex: "laptop123" -> "l", "ap", "pt", "op", "123"
                         )
                     )
                     // Token Filters
@@ -145,43 +145,9 @@ public class IndexMappingService(ElasticClient elasticClient)
     }
 
     /// <summary>
-    /// Create Index Template - applies settings to all indices matching pattern
-    /// Example: All indices like "products-2024-*" will use this template
-    /// </summary>
-    public async Task<bool> CreateProductIndexTemplateAsync()
-    {
-        var response = await elasticClient.Indices.PutTemplateAsync("products-template", tmpl => tmpl
-            .IndexPatterns("products-*")  // Matches: products-2024, products-v2, etc.
-            .Settings(s => s
-                .NumberOfShards(2)
-                .NumberOfReplicas(1)
-                .RefreshInterval("5s")
-            )
-            .Map<Product>(m => m
-                .Properties(p => p
-                    .Text(t => t
-                        .Name(n => n.Name)
-                        .Fields(f => f.Keyword(k => k.Name("keyword")))
-                    )
-                    .Keyword(k => k.Name(n => n.Category))
-                    .Number(n => n.Name(nn => nn.Price).Type(NumberType.Float))
-                )
-            )
-        );
-
-        if (response.IsValid)
-        {
-            Console.WriteLine("✅ Index template created successfully");
-            return true;
-        }
-
-        Console.WriteLine($"❌ Failed to create template: {response.DebugInformation}");
-        return false;
-    }
-
-    /// <summary>
     /// Test analyzer with sample text
     /// Shows how text is tokenized and analyzed
+    /// request example: standard, simple, whitespace, product_name_analyzer, autocomplete_analyzer
     /// </summary>
     public async Task<List<string>> TestAnalyzerAsync(string text, string analyzer = "standard")
     {
@@ -234,6 +200,7 @@ public class IndexMappingService(ElasticClient elasticClient)
     /// <summary>
     /// Reindex data from old index to new index
     /// Useful when you need to change mapping of existing fields
+    /// example: reindex from "products" to "products-v2" after changing mapping in "products-v2"
     /// </summary>
     public async Task<bool> ReindexAsync(string sourceIndex, string destIndex)
     {
@@ -251,125 +218,6 @@ public class IndexMappingService(ElasticClient elasticClient)
 
         Console.WriteLine($"❌ Reindex failed: {response.DebugInformation}");
         return false;
-    }
-
-    
-    /// <summary>
-    /// Create index with alias
-    /// Aliases allow zero-downtime reindexing
-    /// </summary>
-    public async Task<bool> CreateIndexWithAliasAsync(string indexName, string aliasName)
-    {
-        var response = await elasticClient.Indices.CreateAsync(indexName, c => c
-            .Map<Product>(m => m.AutoMap())
-            .Aliases(a => a
-                .Alias(aliasName)
-            )
-        );
-
-        if (response.IsValid)
-        {
-            Console.WriteLine($"✅ Index '{indexName}' created with alias '{aliasName}'");
-            return true;
-        }
-
-        Console.WriteLine($"❌ Failed: {response.DebugInformation}");
-        return false;
-    }
-
-    /// <summary>
-    /// Demonstrate different data types in Elasticsearch
-    /// </summary>
-    public class ProductWithAllDataTypes
-    {
-        // String types
-        public string TextField { get; set; } = string.Empty;        // Full-text search
-        public string KeywordField { get; set; } = string.Empty;     // Exact match, sorting, aggregations
-        
-        // Numeric types
-        public int IntegerField { get; set; }
-        public long LongField { get; set; }
-        public float FloatField { get; set; }
-        public double DoubleField { get; set; }
-        public decimal ScaledFloatField { get; set; }
-        
-        // Date types
-        public DateTime DateField { get; set; }
-        public DateTimeOffset DateTimeOffsetField { get; set; }
-        
-        // Boolean
-        public bool BooleanField { get; set; }
-        
-        // Arrays
-        public List<string> StringArray { get; set; } = new();
-        public List<int> NumberArray { get; set; } = new();
-        
-        // Nested object (maintains parent-child relationship)
-        public NestedObject? NestedField { get; set; }
-        
-        // Object (flattened, fields become independent)
-        public ObjectType? ObjectField { get; set; }
-        
-        // Geo types
-        public GeoLocation? Location { get; set; }
-        
-        // IP address
-        public string IpAddress { get; set; } = string.Empty;
-        
-        // Binary (base64)
-        public byte[]? BinaryData { get; set; }
-    }
-
-    public class NestedObject
-    {
-        public string Name { get; set; } = string.Empty;
-        public int Value { get; set; }
-    }
-
-    public class ObjectType
-    {
-        public string Property1 { get; set; } = string.Empty;
-        public string Property2 { get; set; } = string.Empty;
-    }
-
-    /// <summary>
-    /// Example of all data type mappings
-    /// </summary>
-    public async Task<bool> CreateIndexWithAllDataTypesAsync()
-    {
-        var response = await elasticClient.Indices.CreateAsync("demo-data-types", c => c
-            .Map<ProductWithAllDataTypes>(m => m
-                .Properties(p => p
-                    .Text(t => t.Name(n => n.TextField))
-                    .Keyword(k => k.Name(n => n.KeywordField))
-                    
-                    .Number(n => n.Name(nn => nn.IntegerField).Type(NumberType.Integer))
-                    .Number(n => n.Name(nn => nn.LongField).Type(NumberType.Long))
-                    .Number(n => n.Name(nn => nn.FloatField).Type(NumberType.Float))
-                    .Number(n => n.Name(nn => nn.DoubleField).Type(NumberType.Double))
-                    .Number(n => n.Name(nn => nn.ScaledFloatField).Type(NumberType.Float))
-                    
-                    .Date(d => d.Name(n => n.DateField))
-                    .Date(d => d.Name(n => n.DateTimeOffsetField))
-                    
-                    .Boolean(b => b.Name(n => n.BooleanField))
-                    
-                    .Keyword(k => k.Name(n => n.StringArray))
-                    .Number(n => n.Name(nn => nn.NumberArray).Type(NumberType.Integer))
-                    
-                    .Nested<NestedObject>(n => n.Name(nn => nn.NestedField))
-                    .Object<ObjectType>(o => o.Name(nn => nn.ObjectField))
-                    
-                    .GeoPoint(g => g.Name(n => n.Location))
-                    
-                    .Ip(i => i.Name(n => n.IpAddress))
-                    
-                    .Binary(b => b.Name(n => n.BinaryData))
-                )
-            )
-        );
-
-        return response.IsValid;
     }
 }
 
