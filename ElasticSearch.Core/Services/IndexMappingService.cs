@@ -389,6 +389,13 @@ public class IndexMappingService(ElasticClient elasticClient)
       "analyzer": "product_name_analyzer",
       "text": "MacBooks Pro 16 გზაზე მირბის კურდღელი"
     }
+    
+    GET /products-v2/_explain/2
+    {
+      "query": {
+        "match": { "tags": "laptop" }
+      }
+    }
 
     POST /products-v2/_analyze
     {
