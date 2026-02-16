@@ -82,7 +82,7 @@ public class AdvancedSearchController(AdvancedSearchService advancedSearchServic
     ///     
     /// Response: { "page": 1, "pageSize": 10, "total": 25, "totalPages": 3, "products": [...] }
     /// </remarks>
-    [HttpGet("paginated1")]
+    [HttpGet("paginated")]
     public async Task<ActionResult<object>> PaginatedSearch(
         [FromQuery] string query,
         [FromQuery] int page = 1,
