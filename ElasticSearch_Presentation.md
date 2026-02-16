@@ -1,300 +1,145 @@
-# Elasticsearch პროექტის პრეზენტაცია
+# 🚀 Elasticsearch პროექტის პრეზენტაცია: ფუნდამენტური გზამკვლევი
 
-პრაქტიკული გზამკვლევი: როგორ გადავიტანოთ SQL მონაცემები Elasticsearch-ში, ავაწყოთ სწრაფი ძიება/აგრეგაციები და გავუშვათ ყველაფერი Docker-ით.
-
----
-
-## შინაარსი
-- პროექტის მიზანი და ღირებულება
-- არქიტექტურა და მონაცემთა ნაკადი
-- Elasticsearch vs SQL – როდის რა გამოვიყენოთ
-- საბაზისო კონცეფციები (Index, Shard, Replica, Mapping, Analyzer)
-- ინდექსის მეპინგი და ანალიზატორები (პრაქტიკული JSON)
-- მონაცემების სინქრონიზაცია SQL→Elasticsearch (Bulk)
-- API მაგალითები (Complex/Fuzzy/Autocomplete/Paginated)
-- Kibana – სწრაფი ვალიდაცია და ვიზუალიზაცია
-- აგრეგაციები – მაგალითები
-- Docker Compose – გაშვება, მოცულობები, ქსელები
-- Reindex – საუკეთესო პრაქტიკები
-- Refresh Interval – ტიუნინგის რეკომენდაციები
-- Keyword vs Text – სწორი არჩევანი
-- Autocomplete – edge_ngram პრაქტიკაში
-- Hangfire/Worker – საიმედო სინქრონიზაცია
-- წარმადობა, სტაბილურობა, უსაფრთხოება
-- Troubleshooting – ხშირად დასმული პრობლემები
-- Go‑Live ჩეკლისტი
-- ტერმინების ლექსიკონი
-- Q&A
+პრაქტიკული გზამკვლევი: როგორ გადავიტანოთ SQL მონაცემები Elasticsearch-ში, როგორ მუშაობს სისტემა "კაპოტის ქვეშ" და როგორ ავაწყოთ მაღალეფექტური საძიებო სისტემა .NET-ით.
 
 ---
 
-## პროექტის მიზანი და ღირებულება
-- SQL Server-დან მონაცემების სინქრონიზაცია Elasticsearch-ში
-- სწრაფი და მოქნილი ძიება (full‑text, ფაზური/ფაზა‑ფრაზა, ფაზიფიკაცია), ავტოშევსება, აგრეგაციები
-- Docker‑ით მარტივი ადგილობრივი/სასერვერო გაშვება და ინფრასტრუქტურის მართვა
-- მიზანი: მომხმარებელს მივაწოდოთ მაქსიმალურად სწრაფი ძიების გამოცდილება მინიმალური ინფრასტრუქტურული ხარჯით
+## 🏗️ 1. Elasticsearch-ის ფილოსოფია და ფუნდამენტი
+
+Elasticsearch არ არის ჩვეულებრივი ბაზა. მისი მთავარი ძალა სამ სვეტზე დგას:
+
+### 🔍 ა) ინვერსიული ინდექსი (Inverted Index)
+ეს არის Elasticsearch-ის "გული". წარმოიდგინეთ წიგნის ბოლო გვერდები, სადაც სიტყვები ანბანურადაა დალაგებული და მითითებულია გვერდები.
+*   **SQL:** ძებნა ჰგავს მთელი წიგნის წაკითხვას (ნელია).
+*   **Elastic:** სისტემა წინასწარ ქმნის სიას: `ლეპტოპი -> [დოკუმენტი 1, 29, 105]`.
+*   ძებნა ხდება პირდაპირ ამ სიაში, რაც უზრუნველყოფს მყისიერ შედეგს მილიონობით ჩანაწერში.
+
+### 🧩 ბ) დანაწილებული არქიტექტურა (Shards & Replicas)
+*   **Shard (ნაწილი):** ინდექსი იყოფა დამოუკიდებელ "აგურებად". როცა ეძებთ, ყველა შარდი **პარალელურად** მუშაობს.
+*   **Replica (ასლი):** შარდის კოპია. თუ ერთი სერვერი გაითიშება, სისტემა მონაცემებს ასლიდან აიღებს.
+*   **განაწილება:** `hash(_id) % shards_count` ფორმულა განსაზღვრავს, რომელ შარდში მოხვდება დოკუმენტი.
+
+### ⚡ გ) მეხსიერების მართვა (RAM & OS Cache)
+*   **In-Memory Buffer:** ახალი მონაცემები ჯერ ხვდება RAM-ში.
+*   **Filesystem Cache:** `Refresh` (მაგ. 5 წამში ერთხელ) მონაცემებს RAM-იდან გადააქვს **სეგმენტებად**.
+*   **სეგმენტები (Segments):** ინვერსიული ინდექსის პატარა ფაილები. რაც უფრო მეტია RAM, მით მეტ სეგმენტს ინახავს OS ქეშში და ძებნა დისკს საერთოდ არ ეხება.
 
 ---
 
-## არქიტექტურა და მონაცემთა ნაკადი
-- SQL Server – ძირითადი ტრანზაქციული საცავი
-- Elasticsearch – ძიება და ანალიტიკა
-- Hangfire Jobs/Worker – ფონური სინქრონიზაცია და ინდექსაცია (Bulk)
-- API – ძიების endpoint‑ები მომხმარებლისთვის
-- Docker Compose – სერვისების კომბინირებული გაშვება
+## 🧪 2. ანალიზის პროცესი (Analysis Pipeline)
 
-მონაცემთა ნაკადი:
-1) SQL → (SELECT) →
-2) Worker/Hangfire → ტრანსფორმაცია JSON‑ად →
-3) Elasticsearch Bulk API →
-4) API → ძიება/აგრეგაცია →
-5) Kibana → მონიტორინგი/ვალიდაცია
+ანალიზი არის ტექსტის "მომზადება" ინვერსიულ ინდექსში ჩაწერამდე.
 
----
+### ⚙️ როგორ მუშაობს ანალიზატორი?
+1.  **Tokenizer:** ტექსტის დაჭრა (მაგ: "MacBook Pro" -> `macbook`, `pro`).
+2.  **Filters:**
+    *   `Lowercase`: ასოების დაპატარავება.
+    *   `Stop Words`: ზედმეტი სიტყვების მოცილება (a, the, and).
+    *   `Snowball (Stemming)`: სიტყვის ფუძეზე დაყვანა (running -> run).
+    *   `Synonyms`: სინონიმების ჩანაცვლება (notebook = laptop).
 
-## Elasticsearch vs SQL – როდის რა გამოვიყენოთ
-- SQL: ტრანზაქციები, სქემები, JOIN‑ები, მკაცრი კონსისტენტობა (ACID)
-- Elasticsearch: JSON დოკუმენტები, schema‑on‑write, სწრაფი full‑text/ანალიტიკა, eventual consistency
-- სიგნალი: თუ მთავარი ამოცანაა ძიების სიჩქარე/რელევანტობა და ტექსტის ანალიზი → Elasticsearch; რთული ბუღალტრული/ტრანზაქციული ლოგიკა → SQL
+### 💡 მნიშვნელოვანი წესი:
+ანალიზი ხდება **ორივე მხარეს**:
+*   **ჩაწერისას (Indexing Time):** იქმნება ოპტიმიზირებული ტოკენები.
+*   **ძებნისას (Search Time):** მომხმარებლის საძიებო სიტყვაც ანალოგიურად მუშავდება, რომ "გასაღები" (query) მოერგოს "საკეტს" (index).
 
 ---
 
-## საბაზისო კონცეფციები
-- Index – დოკუმენტების ლოგიკური კონტეინერი
-- Shard – ინდექსის ფიზიკური დაყოფა ჰორიზონტალური მასშტაბირებისთვის
-- Replica – shard‑ის ასლები – მაღალი ხელმისაწვდომობა/კითხვის throughput
-- Mapping – ველების ტიპები და ქცევა ძიებისას
-- Analyzer/Tokenizer/Filter – ტექსტის დაშლა, ნორმალიზაცია, სინონიმები
+## 🛠️ 3. ინდექსის მეპინგი და Settings (პრაქტიკა)
 
----
+ჩვენს პროექტში ვიყენებთ `products-v2` ინდექსს გაუმჯობესებული სინონიმებით და პაგინაციით.
 
-## ინდექსის მეპინგი და ანალიზატორები (პრაქტიკული JSON)
+### 📐 Mapping-ის მაგალითი (NEST / JSON)
 ```json
-PUT products
+PUT /products-v2
 {
   "settings": {
-    "number_of_shards": 1,
-    "number_of_replicas": 1,
-    "refresh_interval": "1s",
+    "number_of_shards": 3,
+    "refresh_interval": "5s",
     "analysis": {
       "analyzer": {
         "product_name_analyzer": {
           "type": "custom",
           "tokenizer": "standard",
-          "filter": ["lowercase", "stop", "kstem"]
-        },
-        "autocomplete_analyzer": {
-          "type": "custom",
-          "tokenizer": "edge_ngram_tokenizer",
-          "filter": ["lowercase"]
+          "filter": ["lowercase", "stop", "snowball", "product_synonyms"]
         }
       },
-      "tokenizer": {
-        "edge_ngram_tokenizer": {
-          "type": "edge_ngram",
-          "min_gram": 2,
-          "max_gram": 20,
-          "token_chars": ["letter", "digit"]
+      "filter": {
+        "product_synonyms": {
+          "type": "synonym",
+          "synonyms": ["laptop, notebook, computer", "phone, smartphone"]
         }
       }
     }
   },
   "mappings": {
     "properties": {
-      "id": { "type": "keyword" },
-      "name": {
-        "type": "text",
+      "name": { 
+        "type": "text", 
         "analyzer": "product_name_analyzer",
-        "fields": {
-          "keyword": { "type": "keyword" },
-          "autocomplete": { "type": "text", "analyzer": "autocomplete_analyzer" }
-        }
+        "search_analyzer": "product_name_analyzer",
+        "fields": { "keyword": { "type": "keyword" } }
       },
-      "description": { "type": "text", "analyzer": "standard" },
       "price": { "type": "float" },
-      "stock": { "type": "integer" },
-      "category": {
-        "type": "keyword",
-        "fields": { "text": { "type": "text" } }
-      },
-      "tags": { "type": "keyword" },
-      "createdDate": { "type": "date" },
-      "isActive": { "type": "boolean" },
-      "specifications": {
-        "type": "nested",
-        "properties": {
-          "brand": { "type": "keyword" },
-          "model": { "type": "keyword" }
-        }
-      }
+      "category": { "type": "keyword" }
     }
   }
 }
 ```
 
-შენიშვნა: თუ შეცვლით ანალიზატორებს/ველების ტიპებს, შექმენით ახალი ინდექსი და გამოიყენეთ reindex.
+---
+
+## 📊 4. რანჟირება და რელევანტურობა (_score)
+
+Elasticsearch არ გეუბნებათ მხოლოდ "ვიპოვე თუ არა", ის გეუბნებათ "რამდენად ემთხვევა".
+
+### ⚖️ როგორ ითვლება ქულა?
+*   **TF (Term Frequency):** რაც უფრო ხშირად გვხვდება სიტყვა დოკუმენტში, მით მაღალია ქულა.
+*   **IDF (Inverse Document Frequency):** რაც უფრო იშვიათია სიტყვა მთელ ბაზაში, მით მეტია მისი "წონა".
+*   **Boost:** ხელოვნური პრიორიტეტი. მაგ: `.Field(p => p.Name, boost: 2.0)` ნიშნავს, რომ სახელში დამთხვევა 2-ჯერ უფრო მნიშვნელოვანია.
 
 ---
 
-## მონაცემების ფორმა: SQL vs Elasticsearch
-SQL:
+## 🩺 5. დებაგი და მონიტორინგი (Kibana Tools)
 
-| Id | Name         | Price   | Category |
-|----|--------------|---------|----------|
-| 1  | MacBook Pro  | 4999.99 | Laptops  |
+როცა ძებნა არ მუშაობს ისე, როგორც გსურთ, გამოიყენეთ ეს ინსტრუმენტები:
 
-Elasticsearch დოკუმენტი:
+### 🔎 ა) Search Profiler (`"profile": true`)
+ეს არის Elasticsearch-ის "რენტგენი". გიჩვენებთ დროს თითოეული პირობისთვის:
+*   `build_scorer`: რამდენ ხანს ემზადებოდა ალგორითმი.
+*   `next_doc`: შემდეგი დოკუმენტის პოვნის დრო.
+*   ხედავთ "Bottleneck"-ებს (მაგ. Wildcard ძებნა, რომელიც ანელებს პროცესს).
+
+### 📐 ბ) Explain API (`_explain`)
+გპასუხობთ კითხვაზე: "რატომ მოხვდა ეს დოკუმენტი პირველ ადგილზე?".
 ```json
-{
-  "id": 1,
-  "name": "MacBook Pro",
-  "price": 4999.99,
-  "category": "Laptops",
-  "tags": ["apple", "laptop"],
-  "specifications": { "brand": "Apple", "model": "MacBook Pro 2024" }
-}
+GET /products-v2/_explain/29 { "query": { "match": { "name": "laptop" } } }
 ```
+პასუხში დაინახავთ ზუსტ მათემატიკურ ფორმულას (Boost * IDF * TF).
+
+### 🧪 გ) Painless Lab
+Painless არის Elasticsearch-ის სკრიპტირების ენა (Java-ს მსგავსი).
+*   გამოიყენება დინამიური გამოთვლებისთვის (მაგ. ფასდაკლების დათვლა ძებნისას).
+*   Lab-ში ტესტავთ უსაფრთხოდ, სანამ რეალურ Query-ში ჩასვამთ.
 
 ---
 
-## მონაცემების სინქრონიზაცია SQL→Elasticsearch
-- ამოღება: `SELECT` SQL‑დან
-- ტრანსფორმაცია: ობიექტ → JSON
-- ჩატვირთვა: `Bulk API` (batched, retries, backoff)
-- რეკომენდაციები:
-  - გამოიყენეთ idempotent ოპერაციები (`index`/`update` `doc_as_upsert:true`‑ით)
-  - დააყენეთ `refresh_interval` > `1s` მასიური ჩატვირთვისას; დასრულების შემდეგ `POST /products/_refresh`
-  - კონტროლირებადი batch ზომა (მაგ. 2–5MB per request)
+## 🔄 6. სინქრონიზაციის ფლოუ (SQL → Elastic)
+
+1.  **Extract:** SQL Server-დან მონაცემების ამოღება (Hangfire Job).
+2.  **Transform:** DTO-ების გარდაქმნა `Product` მოდელად (ტოკენიზაცია ხდება Elastic-ში).
+3.  **Load:** `Bulk API`-ს გამოყენებით მონაცემების პაკეტური ჩატვირთვა (მაგ. 1000 ჩანაწერი ერთ რექვესტში).
+4.  **Refresh:** 5 წამის შემდეგ მონაცემები ხდება საძიებო.
 
 ---
 
-## API მაგალითები (პროექტიდან)
-- Complex Bool Search
-```
-GET /api/advancedsearch/complex?query=macbook&category=laptops&maxPrice=3000&page=1&pageSize=20
-```
-- Fuzzy Search
-```
-GET /api/advancedsearch/fuzzy?query=mackbok&maxEdits=2
-```
-- Autocomplete
-```
-GET /api/advancedsearch/autocomplete?prefix=mac&limit=10
-```
-- Paginated Search
-```
-GET /api/advancedsearch/paginated1?query=macbook&page=1&pageSize=10
-```
+## 💡 7. რჩევები და საუკეთესო პრაქტიკები
+*   **Keyword vs Text:** `keyword` გამოიყენეთ ფილტრებისთვის/აგრეგაციისთვის, `text` - ძებნისთვის.
+*   **Zero-Downtime:** გამოიყენეთ **Aliases**. პროგრამა ყოველთვის მიმართავს `products_alias`-ს, თქვენ კი ფონურად ქმნით `products_v3`-ს და მერე გადართავთ ალიასს.
+*   **Performance:** RAM-ის ნახევარი დაუტოვეთ ოპერაციულ სისტემას Filesystem Cache-ისთვის.
+*   **Painless:** გამოიყენეთ მხოლოდ მაშინ, როცა წინასწარ ვერ ითვლით მონაცემებს (მაგ. მანძილის გამოთვლა).
 
 ---
 
-## ძიების ლოგიკა (კონცეპტი)
-- MUST: `multi_match` (name, description, category.text)
-- FILTER: `category` (keyword), `price <= X`, `isActive=true`
-- SHOULD: `tags:featured` boost, `stock>0` boost
-- Sort: `_score` ↓, `createdDate` ↓
-- Highlight: `name`, `description`
-
----
-
-## Kibana – სწრაფი ვალიდაცია
-- Discover – დოკუმენტების ინსპექტირება
-- Console – კითხვის ტესტირება (`_search`, `aggregations`)
-- Visualize – კატეგორიების/ფასების განაწილება
-
-მაგალითი – Terms Aggregation კატეგორიებზე:
-```json
-GET products/_search
-{
-  "size": 0,
-  "aggs": {
-    "by_category": {
-      "terms": { "field": "category" }
-    }
-  }
-}
-```
-შედეგი (მაგ.): `{ "Laptops": 15, "Phones": 8 }`
-
----
-
-## Docker Compose – გაშვება
-- Volumes: `elasticsearch-data`, `sqlserver-data`
-- Network: `elastic-network`
-- სერვისების გაშვება:
-```
-docker compose up -d
-```
-- ლოგები:
-```
-docker compose logs -f elasticsearch
-```
-
----
-
-## Reindex – საუკეთესო პრაქტიკები
-1) შექმენით ახალი ინდექსი ახალი mapping/settings‑ით
-2) გაწერეთ `aliases` ცვლილებებისთვის (`products_v2` ↔ `products_current`)
-3) გამოიყენეთ `_reindex` მხოლოდ დოკუმენტების გადასატანად; მეპინგები/ანალიზატორები ხელით შექმენით წინასწარ
-4) დააკვირდით ველების rename/ტიპების ცვლილებებს – საჭიროებისას `script` reindex-ში
-
----
-
-## Refresh Interval – ტიუნინგი
-- მოკლე (მაგ. `1s`): სწრაფი ქვეინდექსაცია, მეტი I/O
-- გრძელი (მაგ. `30s` ან `-1` დროებით): bulk ჩატვირთვისას უკეთესი throughput
-- წესი: ინდესქის heavily write ფაზაში გაზარდეთ, კითხვითი ფაზაში შეამცირეთ
-
----
-
-## Keyword vs Text – სწორი არჩევანი
-- `keyword` – ზუსტი შესაბამისობა, ფილტრი/სორტი/აგრეგაცია
-- `text` – სრული ტექსტის ძიება, ანალიზატორებით; არ გამოიყენება აგრეგაციაში (გარდა `fields.keyword`)
-
----
-
-## Autocomplete – edge_ngram პრაქტიკაში
-- `edge_ngram` tokenizer აყალიბებს პრეფიქსულ ტოკენებს (`ma`, `mac`, `macb` ...)
-- მოთხოვნა: `match`/`prefix` `name.autocomplete` ველზე
-- შედეგი: მომენტალური ავტოშევსება UI‑ში
-
----
-
-## Hangfire/Worker – საიმედო სინქრონიზაცია
-- განმეორებადი Jobs: Retry/backoff, dead‑letter სტრატეგია
-- Concurrency კონტროლი: Queue per entity, Locking
-- ტრანზაქციულობა: SQL → Outbox Pattern (სასურველია)
-
----
-
-## წარმადობა, სტაბილურობა, უსაფრთხოება
-- Performance: სწორი shard რაოდენობა (საწყისად 1–3), batch bulk, `_source` selective fields თუ საჭიროა
-- Stability: replicas ≥1 production-ში, node monitoring, ILM (მოცულობის მართვა)
-- Security: TLS, API key/Basic auth, როლებზე დაფუძნებული წვდომა (Kibana Spaces)
-
----
-
-## Troubleshooting – ხშირად დასმული პრობლემები
-- „ძებნა გვიან ხედავს ახალ დოკებს“ → `refresh_interval`/`_refresh`
-- „აგრეგაციები ნელა მუშაობს“ → ველების keyword‑იზაცია, `shard_size`/`size` ტუნინგი
-- „მიჩნეულია, მაგრამ ვერ პოულობს“ → ანალიზატორი/ტოკენიზატორი, `explain:true` ტესტირება
-
----
-
-## Go‑Live ჩეკლისტი
-- [ ] Mapping/Settings დამტკიცებულია და version‑ირებულია (IaC)
-- [ ] Index Alias სტრატეგია მზადაა (zero‑downtime deploy)
-- [ ] მონიტორინგი/Kibana Dashboard‑ები კონფიგურირებულია
-- [ ] Backup/Snapshot პოლიტიკა ჩართულია
-
----
-
-## ტერმინების ლექსიკონი
-- Shard – ინდექსის ფრაგმენტი ჰორიზონტალური მასშტაბირებისთვის
-- Replica – shard‑ის ასლი მაღალი ხელმისაწვდომობისთვის
-- Analyzer – ტექსტის დაშლის/ნორმალიზაციის მექანიზმი
-
----
-
-## Q&A
-დამატებითი კითხვები ან დეტალები? სიამოვნებით განვიხილავ კონკრეტულ ქეისებს, ინდექსის დიზაინს ან შესრულების ტიუნინგს.
+## ❓ Q&A
+Elasticsearch არის ინსტრუმენტი, რომელიც "უფრო მეტს შრომობს" ჩაწერისას, რათა ძებნისას იყოს მაქსიმალურად მსუბუქი და სწრაფი.
