@@ -60,6 +60,9 @@ docker-compose up -d
 # 1. Stop containers
 docker-compose down
 
+# 1.1 if remove volumes is needed
+docker volume rm elasticsearch_elasticsearch-data elasticsearch_sqlserver-data
+
 # 2. Republish changed projects
 dotnet publish ElasticSearch.Api/ElasticSearch.Api.csproj -c Release
 dotnet publish ElasticSearch.Jobs/ElasticSearch.Jobs.csproj -c Release

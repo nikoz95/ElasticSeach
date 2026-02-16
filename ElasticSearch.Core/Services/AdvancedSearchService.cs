@@ -12,6 +12,79 @@ public class AdvancedSearchService(ElasticClient elasticClient)
     /// Complex Bool Query: Must + Filter + Should
     /// Example: Search "laptop" in Laptops category under $2000 with boost for featured products
     /// </summary>
+    /*GET /products/_search
+    {
+        "from": 0,
+        "size": 20,
+        "query": {
+            "bool": {
+                "must": [
+                {
+                    "multi_match": {
+                        "query": "laptop",
+                        "fields": [
+                        "name^2.0",
+                        "description",
+                        "category"
+                            ],
+                        "type": "best_fields",
+                        "fuzziness": "AUTO"
+                    }
+                }
+                ],
+                "filter": [
+                {
+                    "match": {
+                        "category": "Laptops"
+                    }
+                },
+                {
+                    "range": {
+                        "price": {
+                            "lte": 2000
+                        }
+                    }
+                },
+                {
+                    "term": {
+                        "isActive": true
+                    }
+                }
+                ],
+                "should": [
+                {
+                    "term": {
+                        "tags": {
+                            "value": "featured",
+                            "boost": 1.5
+                        }
+                    }
+                },
+                {
+                    "range": {
+                        "stock": {
+                            "gt": 0,
+                            "boost": 1.2
+                        }
+                    }
+                }
+                ],
+                "minimum_should_match": 0
+            }
+        },
+        "sort": [
+        { "_score": "desc" },
+        { "createdDate": "desc" }
+        ],
+        "highlight": {
+            "pre_tags": ["<mark>"],
+            "post_tags": ["</mark>"],
+            "fields": {
+                "name": { "number_of_fragments": 0 },
+                "description": { "fragment_size": 150, "number_of_fragments": 1 }
+            }
+        }
+    }*/
     public async Task<List<Product>> ComplexBoolSearchAsync(
         string query, 
         string? category = null,
@@ -122,12 +195,78 @@ public class AdvancedSearchService(ElasticClient elasticClient)
 
         return products;
     }
+    /*
+     {
+          "took": 6, // Time taken to execute the search in milliseconds
+          "timed_out": false,
+          "_shards": { // Shard is a subset of the data, Elasticsearch distributes data across multiple shards for scalability and performance
+            "total": 1, // Total number of shards that were queried
+            "successful": 1, // Number of shards that successfully executed the search
+            "skipped": 0, // Number of shards that were skipped (e.g., due to node failures or other issues)
+            "failed": 0 // Number of shards that failed to execute the search (e.g., due to errors or timeouts)
+          },
+          "hits": {
+            "total": {
+              "value": 2,
+              "relation": "eq" // "eq" means the total hits is an exact count, "gte" means the total hits is greater than or equal to the value (used when track_total_hits is false for performance reasons)
+            },
+            "max_score": null,
+            "hits": [
+              {
+                "_index": "products",
+                "_id": "29",
+                "_score": 2.501821, // Relevance score calculated by Elasticsearch based on the query and the document's content. Higher score means more relevant to the query.
+                "_source": {
+                  "id": "29",
+                  "name": "Lenovo ThinkPad X1 Carbon",
+                  "description": "ბიზნეს ლეპტოპი Intel Core i7, 16GB RAM, მსუბუქი და გამძლე",
+                  "price": 1899.99,
+                  "stock": 18,
+                  "category": "Laptops",
+                  "tags": [
+                    "lenovo",
+                    "laptop",
+                    "thinkpad",
+                    "business",
+                    "portable"
+                  ],
+                  "createdDate": "2026-02-14T13:23:56.3700000",
+                  "isActive": true,
+                  "specifications": {
+                    "brand": "Lenovo",
+                    "model": "ThinkPad X1 Carbon Gen 11"
+                  }
+                },
+                "sort": [
+                  2.501821, // The first value in the sort array corresponds to the relevance score (_score) of the document. This is used when sorting by relevance.
+                  1771075436370 // The second value corresponds to the createdDate field, which is used for secondary sorting when multiple documents have the same relevance score. This value is the epoch time in milliseconds for the createdDate of the document (2026-02-14T13:23:56.370Z).
+                ]
+              },
+            ]
+          }
+        }
+     */
 
     /// <summary>
-    /// Fuzzy Search - tolerates typos (e.g., "laptap" → "laptop")
+    /// Fuzzy Search - tolerates typos (e.g., "dall" → "dell")
     /// Fuzziness=Auto: 1-2 chars = 0 edits, 3-5 chars = 1 edit, 5+ chars = 2 edits
     /// </summary>
-    public async Task<List<Product>> FuzzySearchAsync(string query, int maxEdits = 2)
+    /*
+     GET /products/_search
+    {
+      "query": {
+        "match": {
+          "name": {
+            "query": "dall",
+            "fuzziness": "AUTO",
+            "prefix_length": 0,
+            "max_expansions": 50
+          }
+        }
+      }
+    }
+     */
+    public async Task<List<Product>> FuzzySearchAsync(string query, int maxEdits = 0)
     {
         var response = await elasticClient.SearchAsync<Product>(s => s
             .Index("products")
@@ -136,7 +275,7 @@ public class AdvancedSearchService(ElasticClient elasticClient)
                     .Field(f => f.Name)
                     .Query(query)
                     .Fuzziness(Fuzziness.Auto)
-                    .PrefixLength(2)  // First 2 chars must match exactly
+                    .PrefixLength(0)  // First 2 chars must match exactly
                     .MaxExpansions(50) // max check 50 variations words, ex: ["laatap", "labtap", ..., "laptop", "laptap", ...]
                 )
             )
@@ -151,6 +290,26 @@ public class AdvancedSearchService(ElasticClient elasticClient)
     /// Prefix Search - starts with query ex:"mac" matches "macbook" because "mac" is a prefix
     /// Faster than wildcard, optimized for autocomplete
     /// </summary>
+    /*
+     GET /products/_search
+    {
+      "size": 10,
+      "query": {
+        "match_phrase_prefix": {
+          "name": {
+            "query": "mac"
+          }
+        }
+      },
+      "sort": [
+        {
+          "name.keyword": {
+            "order": "asc"
+          }
+        }
+      ]
+    }
+     */
     public async Task<List<Product>> PrefixSearchAsync(string prefix, int limit = 10)
     {
         var response = await elasticClient.SearchAsync<Product>(s => s
@@ -173,6 +332,23 @@ public class AdvancedSearchService(ElasticClient elasticClient)
     /// <summary>
     /// Paginated search with total count
     /// </summary>
+    /*
+     GET /products/_search
+    {
+      "from": 0,
+      "size": 20,
+      "query": {
+        "multi_match": {
+          "query": "dell",
+          "fields": [
+            "name",
+            "description"
+          ]
+        }
+      },
+      "track_total_hits": true
+    }
+     */
     public async Task<(List<Product> Products, long Total)> PaginatedSearchAsync(
         string query, 
         int page = 1, 
