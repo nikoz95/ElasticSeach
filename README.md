@@ -1,33 +1,33 @@
 # ElasticSearch Demo Project
 
-.NET 9.0 აპლიკაცია SQL Server-დან Elasticsearch-ში მონაცემების სინქრონიზაციისთვის Hangfire background jobs-ით.
+.NET 9.0 application for synchronizing data from SQL Server to Elasticsearch using Hangfire background jobs.
 
-## 🏗️ არქიტექტურა
+## 🏗️ Architecture
 
 - **ElasticSearch.Api** - ASP.NET Core Web API
 - **ElasticSearch.Jobs** - Background Jobs Service (Hangfire)
-- **ElasticSearch.Core** - Shared business logic და services
-- **SQL Server** - Primary data store (LocalDB ან SQL Server container)
+- **ElasticSearch.Core** - Shared business logic and services
+- **SQL Server** - Primary data store (LocalDB or SQL Server container)
 - **Elasticsearch** - Search engine
 - **Kibana** - Elasticsearch UI
 
 ---
 
-## 🚀 გაშვება
+## 🚀 Getting Started
 
-### ✅ ვარიანტი 1: Local Development (Windows + LocalDB)
+### ✅ Option 1: Local Development (Windows + LocalDB)
 
-**რეკომენდებული local development-სთვის**
+**Recommended for local development**
 
 ```bash
-# 1. Elasticsearch და Kibana (Docker-ში)
+# 1. Elasticsearch and Kibana (in Docker)
 docker-compose up -d elasticsearch kibana
 
 # 2. Jobs Service (local)
 cd ElasticSearch.Jobs
 dotnet run
 
-# 3. API (local, ახალ terminal-ში)
+# 3. API (local, in a new terminal)
 cd ElasticSearch.Api
 dotnet run
 ```
@@ -36,14 +36,14 @@ dotnet run
 
 ---
 
-### 🐳 ვარიანტი 2: Full Docker Stack
+### 🐳 Option 2: Full Docker Stack
 
-**Elasticsearch, API, Jobs - ყველაფერი Docker-ში**
+**Elasticsearch, API, Jobs - everything in Docker**
 
-#### პირველი გაშვება:
+#### First run:
 
 ```powershell
-# 1. Publish .NET პროექტები
+# 1. Publish .NET projects
 dotnet publish ElasticSearch.Api/ElasticSearch.Api.csproj -c Release
 dotnet publish ElasticSearch.Jobs/ElasticSearch.Jobs.csproj -c Release
 
@@ -54,13 +54,13 @@ docker-compose build --no-cache
 docker-compose up -d
 ```
 
-#### კოდის ცვლილების შემდეგ:
+#### After code changes:
 
 ```powershell
 # 1. Stop containers
 docker-compose down
 
-# 1.1 if remove volumes is needed
+# 1.1 if removing volumes is needed
 docker volume rm elasticsearch_elasticsearch-data elasticsearch_sqlserver-data
 
 # 2. Republish changed projects
@@ -90,15 +90,15 @@ docker-compose up -d
 
 ## 🔄 Background Sync Jobs
 
-Hangfire ავტომატურად ასრულებს სინქრონიზაციას:
+Hangfire automatically performs synchronization:
 
-- **Incremental Sync**: ყოველ 5 წუთში (მხოლოდ ცვლილებები)
-- **Full Sync (Daily)**: ყოველდღე 02:00 AM
-- **Full Sync (Weekly)**: ყოველ კვირას 03:00 AM
+- **Incremental Sync**: Every 5 minutes (changes only)
+- **Full Sync (Daily)**: Every day at 02:00 AM
+- **Full Sync (Weekly)**: Every Sunday at 03:00 AM
 
 ---
 
-## 📁 პროექტის სტრუქტურა
+## 📁 Project Structure
 
 ```
 ElasticSearch/
@@ -123,228 +123,56 @@ ElasticSearch/
 │       ├── IndexMappingService.cs
 │       ├── ProductSearchService.cs
 │       ├── AdvancedSearchService.cs
-│       ├── SqlToElasticsearchSyncService.cs
-│       └── SyncJobExecutor.cs
+│       └── SqlToElasticsearchSyncService.cs
 │
-├── docker-compose.yml              # Docker orchestration
-├── .dockerignore
-└── .gitignore
+├── docker-compose.yml              # Infrastructure
+└── README.md                       # Documentation
 ```
 
 ---
 
-## 🔧 Configuration
+## 🔍 Search Features Implemented
 
-### Local Development (appsettings.json)
-```json
-{
-  "ConnectionStrings": {
-    "SqlServer": "Server=(localdb)\\MSSQLLocalDB;Database=ElasticsearchDemo;Integrated Security=True;TrustServerCertificate=True;"
-  },
-  "Elasticsearch": {
-    "Uri": "http://localhost:9200"
-  }
-}
-```
+The project demonstrates various Elasticsearch search capabilities:
 
-### Docker (appsettings.Production.json)
-```json
-{
-  "ConnectionStrings": {
-    "SqlServer": "Server=sqlserver,1433;Database=ElasticsearchDemo;User Id=sa;Password=Password1234!;TrustServerCertificate=True;"
-  },
-  "Elasticsearch": {
-    "Uri": "http://elasticsearch:9200"
-  }
-}
-```
+### 1. Simple Search (`ProductSearchService`)
+- Full-text search across multiple fields (Name, Description, Category).
+- Filtering by Category and Price Range.
+- Terms Aggregation for category statistics.
+
+### 2. Advanced Search (`AdvancedSearchService`)
+- **Complex Bool Query**: Combining `must`, `filter`, and `should` for precise results.
+- **Fuzzy Search**: Tolerance for typos (e.g., searching for "mackbook" finds "macbook").
+- **Prefix Search / Autocomplete**: Optimized for search-as-you-type functionality.
+- **Pagination**: Efficiently handling large result sets using `from` and `size`.
+- **Highlighting**: Visually marking matching terms in search results.
+
+### 3. Index Management (`IndexMappingService`)
+- **Custom Analyzers**: Stemming, lowercase, and synonym filters (e.g., laptop = notebook).
+- **Edge N-Gram Tokenizer**: Powering the autocomplete feature.
+- **Reindexing**: Moving data between indices with zero downtime.
+- **Analysis API**: Testing how text is tokenized by different analyzers.
 
 ---
 
-## ✨ Features
+## 💡 Key Elasticsearch Concepts Demonstrated
 
-### ✅ Automatic Database Initialization
-- თავისთავად ქმნის database და tables
-- ატვირთავს 15 სატესტო პროდუქტს (ქართულ-ინგლისური descriptions)
-- ქმნის indexes და constraints
-
-### ✅ API Endpoints
-
-#### Search Products
-```http
-GET /api/products/search?query=laptop&pageSize=10&pageNumber=1
-```
-
-#### Advanced Search
-```http
-POST /api/advanced-search
-Content-Type: application/json
-
-{
-  "query": "macbook",
-  "category": "Laptops",
-  "minPrice": 1000,
-  "maxPrice": 5000,
-  "tags": ["apple", "premium"],
-  "pageSize": 20,
-  "pageNumber": 1
-}
-```
-
-#### Index Management
-```http
-GET /api/index/health
-GET /api/index/mapping
-POST /api/index/recreate
-```
-
-### ✅ Background Synchronization
-- **Incremental Sync**: აღმოაჩენს მხოლოდ ცვლილებებს (UpdatedAt field-ის მიხედვით)
-- **Full Sync**: სრული რესინქრონიზაცია
-- **Automatic timestamp tracking**: ყოველი sync-ის შემდეგ ინახავს timestamp-ს Elasticsearch-ში
+- **Inverted Index**: The core data structure for fast full-text searching.
+- **Analysis Pipeline**: Tokenizers and Filters (Stop words, Stemming, Synonyms).
+- **Shards & Replicas**: Horizontal scaling and high availability.
+- **Scoring (BM25)**: How relevance is calculated using TF-IDF.
+- **Mapping**: Defining field types (Text vs Keyword) for optimal performance.
+- **Refresh Interval**: Balancing write performance and search near-real-time visibility.
 
 ---
 
-## 🧪 ტესტირება
+## 🛠️ Technologies Used
 
-### Endpoints-ის ტესტირება
-
-```powershell
-# ყველა endpoint-ის ტესტირება
-.\test-endpoints.ps1
-
-# Autocomplete endpoint-ის ტესტირება
-.\test-autocomplete.ps1
-```
-
-### ხელით ტესტირება (curl)
-
-```powershell
-# Basic Search
-curl.exe "http://localhost:5000/api/products/search?query=macbook"
-
-# Autocomplete
-curl.exe "http://localhost:5000/api/advancedsearch/autocomplete?prefix=mac"
-
-# Category Filter
-curl.exe "http://localhost:5000/api/products/category/laptops"
-
-# Fuzzy Search
-curl.exe "http://localhost:5000/api/advancedsearch/fuzzy?query=mackbok"
-
-# Complex Search with Filters
-curl.exe "http://localhost:5000/api/advancedsearch/complex?query=macbook&category=laptops&maxPrice=3000"
-```
-
----
-
-## 🛠️ Development
-
-### Prerequisites
-- .NET 9.0 SDK
-- Docker Desktop
-- SQL Server LocalDB (Windows) ან SQL Server 2022
-
-### Build
-```bash
-# Restore packages
-dotnet restore
-
-# Build solution
-dotnet build
-
-# Run tests (თუ არის)
-dotnet test
-```
-
-### Docker Build
-
-**მნიშვნელოვანი**: Docker არ აბილდებს კოდს - იყენებს pre-published files-ს
-
-```powershell
-# 1. Publish ცვლილებები
-dotnet publish ElasticSearch.Api/ElasticSearch.Api.csproj -c Release
-dotnet publish ElasticSearch.Jobs/ElasticSearch.Jobs.csproj -c Release
-
-# 2. Build Docker images
-docker-compose build --no-cache
-
-# 3. Start containers
-docker-compose up -d
-```
-
-**რატომ ასე?**
-- ✅ ამცირებს Docker build time-ს
-- ✅ თავიდან აიცილებს SSL certificate პრობლემებს NuGet restore-ში
-- ✅ უზრუნველყოფს რომ ყველაზე ბოლო ცვლილებები Docker-ში იქნება
-
----
-
-## 🐛 Troubleshooting
-
-### API არ აბრუნებს შედეგებს
-```powershell
-# შეამოწმე რომ publish გაკეთდა
-dir ElasticSearch.Api\bin\Release\net9.0\publish\ElasticSearch.Api.dll
-
-# თუ არ არსებობს, გააკეთე publish
-dotnet publish ElasticSearch.Api/ElasticSearch.Api.csproj -c Release
-
-# Rebuild Docker image
-docker-compose build --no-cache api
-docker-compose up -d
-```
-
-### კოდის ცვლილებები არ ჩანს Docker-ში
-```powershell
-# 1. Stop all containers
-docker-compose down
-
-# 2. Republish
-dotnet publish ElasticSearch.Api/ElasticSearch.Api.csproj -c Release
-dotnet publish ElasticSearch.Jobs/ElasticSearch.Jobs.csproj -c Release
-
-# 3. Rebuild და Restart
-docker-compose build --no-cache api jobs
-docker-compose up -d
-```
-
-### Elasticsearch არ არის healthy
-```powershell
-# Check cluster health
-curl.exe http://localhost:9200/_cluster/health
-
-# Check logs
-docker-compose logs elasticsearch
-
-# Restart
-docker-compose restart elasticsearch
-```
-
-### Containers-ის სტატუსის შემოწმება
-```powershell
-# ყველა container
-docker ps
-
-# Specific container logs
-docker-compose logs api
-docker-compose logs jobs
-docker-compose logs elasticsearch
-```
-
----
-
-## 📝 Notes
-
-- ✅ **Docker არ აბილდებს კოდს** - იყენებს pre-published files-ს local build-იდან
-- ✅ **კოდის ცვლილებისას** - ყოველთვის გააკეთე `dotnet publish` და შემდეგ `docker-compose build`
-- ✅ **bin/ და obj/ folders** - `.gitignore`-ში დაემატა, მაგრამ `bin/Release/net9.0/publish` არ არის ignore-დ
-- ✅ **SSL პრობლემების თავიდან ასაცილებლად** - local publish გამოიყენება
-- ✅ **ტესტის სკრიპტები** - `test-endpoints.ps1` და `test-autocomplete.ps1` ყველა endpoint-ის შესამოწმებლად
-
----
-
-## 📄 License
-
-MIT License
-
+- **.NET 9.0**
+- **Elasticsearch 8.11**
+- **Kibana 8.11**
+- **NEST** (.NET Client for Elasticsearch)
+- **Hangfire** (Background Jobs)
+- **Dapper** (Lightweight ORM for SQL)
+- **SQL Server 2022**
+- **Docker & Docker Compose**

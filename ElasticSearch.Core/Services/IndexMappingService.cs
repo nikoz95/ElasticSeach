@@ -381,8 +381,7 @@ public class IndexMappingService(ElasticClient elasticClient)
     
     //compare products-v2 mapping with products mapping to see differences in field types, analyzers, etc.
      /*
-     GET /products/_mapping
-     GET /products-v2/_mapping
+    GET /products-v2,products/_mapping
      
      POST /products-v2/_analyze
     {

@@ -1,55 +1,55 @@
-# 🚀 Elasticsearch პროექტის პრეზენტაცია: ფუნდამენტური გზამკვლევი
+# 🚀 Elasticsearch Project Presentation: Fundamental Guide
 
-პრაქტიკული გზამკვლევი: როგორ გადავიტანოთ SQL მონაცემები Elasticsearch-ში, როგორ მუშაობს სისტემა "კაპოტის ქვეშ" და როგორ ავაწყოთ მაღალეფექტური საძიებო სისტემა .NET-ით.
-
----
-
-## 🏗️ 1. Elasticsearch-ის ფილოსოფია და ფუნდამენტი
-
-Elasticsearch არ არის ჩვეულებრივი ბაზა. მისი მთავარი ძალა სამ სვეტზე დგას:
-
-### 🔍 ა) ინვერსიული ინდექსი (Inverted Index)
-ეს არის Elasticsearch-ის "გული". წარმოიდგინეთ წიგნის ბოლო გვერდები, სადაც სიტყვები ანბანურადაა დალაგებული და მითითებულია გვერდები.
-*   **SQL:** ძებნა ჰგავს მთელი წიგნის წაკითხვას (ნელია).
-*   **Elastic:** სისტემა წინასწარ ქმნის სიას: `ლეპტოპი -> [დოკუმენტი 1, 29, 105]`.
-*   ძებნა ხდება პირდაპირ ამ სიაში, რაც უზრუნველყოფს მყისიერ შედეგს მილიონობით ჩანაწერში.
-
-### 🧩 ბ) დანაწილებული არქიტექტურა (Shards & Replicas)
-*   **Shard (ნაწილი):** ინდექსი იყოფა დამოუკიდებელ "აგურებად". როცა ეძებთ, ყველა შარდი **პარალელურად** მუშაობს.
-*   **Replica (ასლი):** შარდის კოპია. თუ ერთი სერვერი გაითიშება, სისტემა მონაცემებს ასლიდან აიღებს.
-*   **განაწილება:** `hash(_id) % shards_count` ფორმულა განსაზღვრავს, რომელ შარდში მოხვდება დოკუმენტი.
-
-### ⚡ გ) მეხსიერების მართვა (RAM & OS Cache)
-*   **In-Memory Buffer:** ახალი მონაცემები ჯერ ხვდება RAM-ში.
-*   **Filesystem Cache:** `Refresh` (მაგ. 5 წამში ერთხელ) მონაცემებს RAM-იდან გადააქვს **სეგმენტებად**.
-*   **სეგმენტები (Segments):** ინვერსიული ინდექსის პატარა ფაილები. რაც უფრო მეტია RAM, მით მეტ სეგმენტს ინახავს OS ქეშში და ძებნა დისკს საერთოდ არ ეხება.
+Practical guide: How to transfer SQL data to Elasticsearch, how the system works "under the hood," and how to build a high-performance search system with .NET.
 
 ---
 
-## 🧪 2. ანალიზის პროცესი (Analysis Pipeline)
+## 🏗️ 1. Elasticsearch Philosophy and Fundamentals
 
-ანალიზი არის ტექსტის "მომზადება" ინვერსიულ ინდექსში ჩაწერამდე.
+Elasticsearch is not a conventional database. Its main strength stands on three pillars:
 
-### ⚙️ როგორ მუშაობს ანალიზატორი?
-1.  **Tokenizer:** ტექსტის დაჭრა (მაგ: "MacBook Pro" -> `macbook`, `pro`).
+### 🔍 a) Inverted Index
+This is the "heart" of Elasticsearch. Imagine the back pages of a book where words are arranged alphabetically with page numbers indicated.
+*   **SQL:** Searching is like reading the entire book from start to finish (slow).
+*   **Elastic:** The system pre-creates a list: `laptop -> [Document 1, 29, 105]`.
+*   Searching happens directly in this list, providing instant results across millions of records.
+
+### 🧩 b) Distributed Architecture (Shards & Replicas)
+*   **Shard:** An index is divided into independent "bricks." When you search, all shards work **in parallel**.
+*   **Replica:** A copy of a shard. If one server fails, the system retrieves data from the copy.
+*   **Distribution:** The `hash(_id) % shards_count` formula determines which shard a document will land in.
+
+### ⚡ c) Memory Management (RAM & OS Cache)
+*   **In-Memory Buffer:** New data first lands in RAM.
+*   **Filesystem Cache:** `Refresh` (e.g., once every 5 seconds) moves data from RAM into **segments**.
+*   **Segments:** Small files of the inverted index. The more RAM available, the more segments are stored in the OS cache, and searching avoids the disk entirely.
+
+---
+
+## 🧪 2. Analysis Pipeline
+
+Analysis is the process of "preparing" text before it is written into the inverted index.
+
+### ⚙️ How does an Analyzer work?
+1.  **Tokenizer:** Cutting text (e.g.: "MacBook Pro" -> `macbook`, `pro`).
 2.  **Filters:**
-    *   `Lowercase`: ასოების დაპატარავება.
-    *   `Stop Words`: ზედმეტი სიტყვების მოცილება (a, the, and).
-    *   `Snowball (Stemming)`: სიტყვის ფუძეზე დაყვანა (running -> run).
-    *   `Synonyms`: სინონიმების ჩანაცვლება (notebook = laptop).
+    *   `Lowercase`: Converting letters to lowercase.
+    *   `Stop Words`: Removing unnecessary words (a, the, and).
+    *   `Snowball (Stemming)`: Reducing a word to its root (running -> run).
+    *   `Synonyms`: Replacing synonyms (notebook = laptop).
 
-### 💡 მნიშვნელოვანი წესი:
-ანალიზი ხდება **ორივე მხარეს**:
-*   **ჩაწერისას (Indexing Time):** იქმნება ოპტიმიზირებული ტოკენები.
-*   **ძებნისას (Search Time):** მომხმარებლის საძიებო სიტყვაც ანალოგიურად მუშავდება, რომ "გასაღები" (query) მოერგოს "საკეტს" (index).
+### 💡 Important Rule:
+Analysis happens on **both sides**:
+*   **Indexing Time:** Optimized tokens are created.
+*   **Search Time:** The user's search term is processed similarly so the "query" (key) fits the "index" (lock).
 
 ---
 
-## 🛠️ 3. ინდექსის მეპინგი და Settings (პრაქტიკა)
+## 🛠️ 3. Index Mapping and Settings (Practice)
 
-ჩვენს პროექტში ვიყენებთ `products-v2` ინდექსს გაუმჯობესებული სინონიმებით და პაგინაციით.
+In our project, we use the `products-v2` index with improved synonyms and pagination.
 
-### 📐 Mapping-ის მაგალითი (NEST / JSON)
+### 📐 Mapping Example (NEST / JSON)
 ```json
 PUT /products-v2
 {
@@ -89,57 +89,57 @@ PUT /products-v2
 
 ---
 
-## 📊 4. რანჟირება და რელევანტურობა (_score)
+## 📊 4. Ranking and Relevance (_score)
 
-Elasticsearch არ გეუბნებათ მხოლოდ "ვიპოვე თუ არა", ის გეუბნებათ "რამდენად ემთხვევა".
+Elasticsearch doesn't just tell you "if it found it or not," it tells you "how well it matches."
 
-### ⚖️ როგორ ითვლება ქულა?
-*   **TF (Term Frequency):** რაც უფრო ხშირად გვხვდება სიტყვა დოკუმენტში, მით მაღალია ქულა.
-*   **IDF (Inverse Document Frequency):** რაც უფრო იშვიათია სიტყვა მთელ ბაზაში, მით მეტია მისი "წონა".
-*   **Boost:** ხელოვნური პრიორიტეტი. მაგ: `.Field(p => p.Name, boost: 2.0)` ნიშნავს, რომ სახელში დამთხვევა 2-ჯერ უფრო მნიშვნელოვანია.
+### ⚖️ How is the Score calculated?
+*   **TF (Term Frequency):** The more often a word appears in a document, the higher the score.
+*   **IDF (Inverse Document Frequency):** The rarer a word is in the entire database, the higher its "weight."
+*   **Boost:** Artificial priority. e.g.: `.Field(p => p.Name, boost: 2.0)` means a match in the name is twice as important.
 
 ---
 
-## 🩺 5. დებაგი და მონიტორინგი (Kibana Tools)
+## 🩺 5. Debugging and Monitoring (Kibana Tools)
 
-როცა ძებნა არ მუშაობს ისე, როგორც გსურთ, გამოიყენეთ ეს ინსტრუმენტები:
+When searching doesn't work as you'd like, use these tools:
 
-### 🔎 ა) Search Profiler (`"profile": true`)
-ეს არის Elasticsearch-ის "რენტგენი". გიჩვენებთ დროს თითოეული პირობისთვის:
-*   `build_scorer`: რამდენ ხანს ემზადებოდა ალგორითმი.
-*   `next_doc`: შემდეგი დოკუმენტის პოვნის დრო.
-*   ხედავთ "Bottleneck"-ებს (მაგ. Wildcard ძებნა, რომელიც ანელებს პროცესს).
+### 🔎 a) Search Profiler (`"profile": true`)
+This is the "X-ray" of Elasticsearch. It shows the time for each condition:
+*   `build_scorer`: How long the algorithm took to prepare.
+*   `next_doc`: Time to find the next document.
+*   You can see "Bottlenecks" (e.g., Wildcard search, which slows down the process).
 
-### 📐 ბ) Explain API (`_explain`)
-გპასუხობთ კითხვაზე: "რატომ მოხვდა ეს დოკუმენტი პირველ ადგილზე?".
+### 📐 b) Explain API (`_explain`)
+Answers the question: "Why did this document end up in first place?".
 ```json
 GET /products-v2/_explain/29 { "query": { "match": { "name": "laptop" } } }
 ```
-პასუხში დაინახავთ ზუსტ მათემატიკურ ფორმულას (Boost * IDF * TF).
+In the response, you will see the exact mathematical formula (Boost * IDF * TF).
 
-### 🧪 გ) Painless Lab
-Painless არის Elasticsearch-ის სკრიპტირების ენა (Java-ს მსგავსი).
-*   გამოიყენება დინამიური გამოთვლებისთვის (მაგ. ფასდაკლების დათვლა ძებნისას).
-*   Lab-ში ტესტავთ უსაფრთხოდ, სანამ რეალურ Query-ში ჩასვამთ.
-
----
-
-## 🔄 6. სინქრონიზაციის ფლოუ (SQL → Elastic)
-
-1.  **Extract:** SQL Server-დან მონაცემების ამოღება (Hangfire Job).
-2.  **Transform:** DTO-ების გარდაქმნა `Product` მოდელად (ტოკენიზაცია ხდება Elastic-ში).
-3.  **Load:** `Bulk API`-ს გამოყენებით მონაცემების პაკეტური ჩატვირთვა (მაგ. 1000 ჩანაწერი ერთ რექვესტში).
-4.  **Refresh:** 5 წამის შემდეგ მონაცემები ხდება საძიებო.
+### 🧪 c) Painless Lab
+Painless is Elasticsearch's scripting language (similar to Java).
+*   Used for dynamic calculations (e.g., calculating a discount during search).
+*   In the Lab, you test safely before inserting it into a real Query.
 
 ---
 
-## 💡 7. რჩევები და საუკეთესო პრაქტიკები
-*   **Keyword vs Text:** `keyword` გამოიყენეთ ფილტრებისთვის/აგრეგაციისთვის, `text` - ძებნისთვის.
-*   **Zero-Downtime:** გამოიყენეთ **Aliases**. პროგრამა ყოველთვის მიმართავს `products_alias`-ს, თქვენ კი ფონურად ქმნით `products_v3`-ს და მერე გადართავთ ალიასს.
-*   **Performance:** RAM-ის ნახევარი დაუტოვეთ ოპერაციულ სისტემას Filesystem Cache-ისთვის.
-*   **Painless:** გამოიყენეთ მხოლოდ მაშინ, როცა წინასწარ ვერ ითვლით მონაცემებს (მაგ. მანძილის გამოთვლა).
+## 🔄 6. Synchronization Flow (SQL → Elastic)
+
+1.  **Extract:** Retrieving data from SQL Server (Hangfire Job).
+2.  **Transform:** Transforming DTOs into a `Product` model (tokenization happens in Elastic).
+3.  **Load:** Batch loading data using the `Bulk API` (e.g., 1000 records in one request).
+4.  **Refresh:** After 5 seconds, the data becomes searchable.
+
+---
+
+## 💡 7. Tips and Best Practices
+*   **Keyword vs Text:** Use `keyword` for filters/aggregations, `text` for searching.
+*   **Zero-Downtime:** Use **Aliases**. The application always addresses `products_alias`, while you create `products_v3` in the background and then switch the alias.
+*   **Performance:** Leave half of the RAM to the operating system for the Filesystem Cache.
+*   **Painless:** Use only when you cannot pre-calculate data (e.g., distance calculation).
 
 ---
 
 ## ❓ Q&A
-Elasticsearch არის ინსტრუმენტი, რომელიც "უფრო მეტს შრომობს" ჩაწერისას, რათა ძებნისას იყოს მაქსიმალურად მსუბუქი და სწრაფი.
+Elasticsearch is a tool that "works harder" during writing to be as lightweight and fast as possible during searching.
