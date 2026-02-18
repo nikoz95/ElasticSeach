@@ -134,10 +134,147 @@ Painless is Elasticsearch's scripting language (similar to Java).
 ---
 
 ## 💡 7. Tips and Best Practices
+*   **Index Templates:** Use templates to automate the setup for new indices matching a pattern.
+*   **Normalizers:** Use for `keyword` fields to enable case-insensitive searching/sorting without tokenization.
 *   **Keyword vs Text:** Use `keyword` for filters/aggregations, `text` for searching.
-*   **Zero-Downtime:** Use **Aliases**. The application always addresses `products_alias`, while you create `products_v3` in the background and then switch the alias.
+*   **Zero-Downtime (Aliases):** Always use an alias (e.g., `products_alias`) in your application code. This allows you to reindex data into a new index (e.g., `products_v2`) and switch the alias instantly without any downtime.
 *   **Performance:** Leave half of the RAM to the operating system for the Filesystem Cache.
 *   **Painless:** Use only when you cannot pre-calculate data (e.g., distance calculation).
+
+---
+
+## 🧱 8. Advanced Index Management (Split, Shrink, Clone, Force Merge)
+
+These operations help you change shard counts and optimize segments without fully reindexing.
+
+### 🔹 Shrink (reduce shards)
+- Use when an index is small and too many primary shards waste resources.
+- Steps: set read-only → shrink → optionally unset read-only.
+- API (our project):
+  - POST /api/indexmanagement/shrink?sourceIndex=products-v2&targetIndex=products-v2-shrunk&targetShards=1
+- Raw request (Elasticsearch):
+```json
+PUT /products-v2/_settings { "settings": { "index.blocks.write": true } }
+POST /products-v2/_shrink/products-v2-shrunk { "settings": { "index.number_of_shards": 1, "index.number_of_replicas": 1 } }
+```
+
+### 🔹 Split (increase shards)
+- Use when an index grew larger than planned and needs more primary shards.
+- API (our project):
+  - POST /api/indexmanagement/split?sourceIndex=products-v2&targetIndex=products-v2-split&targetShards=6
+- Raw request:
+```json
+PUT /products-v2/_settings { "settings": { "index.blocks.write": true } }
+POST /products-v2/_split/products-v2-split { "settings": { "index.number_of_shards": 6 } }
+```
+
+### 🔹 Clone (make an exact copy)
+- For safe experiments or creating a frozen copy.
+- API (our project):
+  - POST /api/indexmanagement/clone?sourceIndex=products-v2&targetIndex=products-v2-clone
+- Raw request:
+```json
+PUT /products-v2/_settings { "settings": { "index.blocks.write": true } }
+POST /products-v2/_clone/products-v2-clone
+```
+
+### 🔹 Force Merge (segment optimization)
+- Merges many small segments into fewer larger ones; use on static indices.
+- API (our project):
+  - POST /api/indexmanagement/forcemerge?indexName=products-v2&maxSegments=1
+- Raw request:
+```json
+POST /products-v2/_forcemerge?max_num_segments=1
+```
+
+Notes:
+- Split target shard count must be a multiple of the source primary shard count.
+- Shrink target shards must divide the source primary shard count.
+- Ensure the source index is read-only during split/shrink/clone.
+
+---
+
+## 📜 9. Elasticsearch Scripting (Painless)
+
+Elasticsearch Scripting allows you to use custom logic for updates, searches, and data transformation.
+
+### 🔹 Update By Query (Scripted Update)
+- Bulk update documents matching a query using a script.
+- API (our project):
+  - POST /api/indexmanagement/bulk-update-script?category=laptops&discount=0.1
+- Raw request:
+```json
+POST /products/_update_by_query
+{
+  "script": {
+    "source": "ctx._source.price = ctx._source.price * (1.0 - params.discount)",
+    "params": { "discount": 0.1 }
+  },
+  "query": { "term": { "category.keyword": "laptops" } }
+}
+```
+
+### 🔹 Script Score (Dynamic Ranking)
+- Adjust the relevance score based on dynamic factors (e.g., boosting products in stock).
+- API (our project):
+  - GET /api/advancedsearch/script-score?query=laptop
+- Raw request:
+```json
+POST /products/_search
+{
+  "query": {
+    "script_score": {
+      "query": { "match": { "name": "laptop" } },
+      "script": {
+        "source": "double boost = doc['stock'].size() != 0 && doc['stock'].value > 0 ? 1.2 : 1.0; return _score * boost;"
+      }
+    }
+  }
+}
+```
+
+### 🔹 Script Fields (Calculated Values)
+- Return values that are not stored in the index but are calculated on the fly.
+- API (our project):
+  - GET /api/advancedsearch/script-fields?query=laptop&vatRate=1.18
+- Raw request:
+```json
+POST /products/_search
+{
+  "query": { "match": { "name": "laptop" } },
+  "script_fields": {
+    "price_with_vat": {
+      "script": {
+        "source": "doc['price'].value * params.vat",
+        "params": { "vat": 1.18 }
+      }
+    }
+  }
+}
+```
+
+### 🔹 Runtime Fields (Search-time Mapping)
+- Define and use fields that are calculated during the search without changing the index mapping.
+- API (our project):
+  - GET /api/advancedsearch/runtime-fields?priceThreshold=2000
+- Raw request:
+```json
+POST /products/_search
+{
+  "runtime_mappings": {
+    "is_expensive": {
+      "type": "boolean",
+      "script": {
+        "source": "emit(doc['price'].value > params.threshold)",
+        "params": { "threshold": 2000 }
+      }
+    }
+  },
+  "query": {
+    "term": { "is_expensive": true }
+  }
+}
+```
 
 ---
 

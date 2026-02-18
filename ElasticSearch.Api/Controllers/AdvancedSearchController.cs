@@ -82,20 +82,33 @@ public class AdvancedSearchController(AdvancedSearchService advancedSearchServic
     ///     
     /// Response: { "page": 1, "pageSize": 10, "total": 25, "totalPages": 3, "products": [...] }
     /// </remarks>
-    [HttpGet("paginated")]
-    public async Task<ActionResult<object>> PaginatedSearch(
-        [FromQuery] string query,
-        [FromQuery] int page = 1,
-        [FromQuery] int pageSize = 20)
+    /// <summary>
+    /// Script Score search - რანჟირების მორგება სკრიპტით (მაგ. ბუსტი მარაგში მყოფ პროდუქტებზე)
+    /// </summary>
+    [HttpGet("script-score")]
+    public async Task<ActionResult<List<Product>>> ScriptScoreSearch([FromQuery] string query)
     {
-        var (products, total) = await advancedSearchService.PaginatedSearchAsync(query, page, pageSize);
-        return Ok(new
-        {
-            Page = page,
-            PageSize = pageSize,
-            Total = total,
-            TotalPages = (int)Math.Ceiling((double)total / pageSize),
-            Products = products
-        });
+        var products = await advancedSearchService.ScriptScoreSearchAsync(query);
+        return Ok(products);
+    }
+
+    /// <summary>
+    /// Script Fields search - გამოთვლილი ველების დაბრუნება (მაგ. ფასი დღგ-თი)
+    /// </summary>
+    [HttpGet("script-fields")]
+    public async Task<ActionResult<object>> ScriptFieldsSearch([FromQuery] string query, [FromQuery] double vatRate = 1.18)
+    {
+        var products = await advancedSearchService.ScriptFieldsSearchAsync(query, vatRate);
+        return Ok(products);
+    }
+
+    /// <summary>
+    /// Runtime Fields search - დინამიკური ველებით ძებნა
+    /// </summary>
+    [HttpGet("runtime-fields")]
+    public async Task<ActionResult<List<Product>>> RuntimeFieldsSearch([FromQuery] decimal priceThreshold = 2000)
+    {
+        var products = await advancedSearchService.RuntimeFieldSearchAsync(priceThreshold);
+        return Ok(products);
     }
 }

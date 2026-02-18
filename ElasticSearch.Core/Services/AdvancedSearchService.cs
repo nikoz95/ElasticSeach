@@ -374,5 +374,84 @@ public class AdvancedSearchService(ElasticClient elasticClient)
 
         return (response.Documents.ToList(), response.Total);
     }
+    /// <summary>
+    /// Search with Script Score: Adjust relevance based on dynamic logic
+    /// Example: Boost score for products in stock
+    /// </summary>
+    public async Task<List<Product>> ScriptScoreSearchAsync(string query)
+    {
+        var response = await elasticClient.SearchAsync<Product>(s => s
+            .Index("products")
+            .Query(q => q
+                .ScriptScore(ss => ss
+                    .Query(qq => qq
+                        .MultiMatch(mm => mm
+                            .Query(query)
+                            .Fields(f => f.Field(p => p.Name).Field(p => p.Description))
+                        )
+                    )
+                    .Script(scr => scr
+                        .Source("double boost = doc['stock'].size() != 0 && doc['stock'].value > 0 ? 1.2 : 1.0; return _score * boost;")
+                    )
+                )
+            )
+        );
+
+        return response.IsValid ? response.Documents.ToList() : [];
+    }
+
+    /// <summary>
+    /// Search with Runtime Fields: Dynamic fields calculated during query
+    /// Example: 'is_expensive' boolean based on price threshold
+    /// </summary>
+    public async Task<List<Product>> RuntimeFieldSearchAsync(decimal priceThreshold)
+    {
+        var response = await elasticClient.SearchAsync<Product>(s => s
+            .Index("products")
+            .RuntimeFields(rm => rm
+                .RuntimeField("is_expensive", FieldType.Boolean, rf => rf
+                    .Script(scr => scr
+                        .Source("emit(doc['price'].value > params.threshold)")
+                        .Params(p => p.Add("threshold", (double)priceThreshold))
+                    )
+                )
+            )
+            .Query(q => q
+                .Term(t => t.Field("is_expensive").Value(true))
+            )
+        );
+
+        return response.IsValid ? response.Documents.ToList() : [];
+    }
+
+    /// <summary>
+    /// Search with Script Fields: Return calculated values not in index
+    /// Example: Calculate price with VAT
+    /// </summary>
+    public async Task<object> ScriptFieldsSearchAsync(string query, double vatRate = 1.18)
+    {
+        var response = await elasticClient.SearchAsync<Product>(s => s
+            .Index("products")
+            .Query(q => q
+                .Match(m => m.Field(f => f.Name).Query(query))
+            )
+            .ScriptFields(sf => sf
+                .ScriptField("price_with_vat", scr => scr
+                    .Source("doc['price'].value * params.vat")
+                    .Params(p => p.Add("vat", vatRate))
+                )
+            )
+            .Source(src => src.IncludeAll()) // Include source fields as well
+        );
+
+        if (!response.IsValid) return new List<object>();
+
+        // For Script Fields, we need to extract from Fields instead of Source
+        return response.Hits.Select(h => new
+        {
+            Product = h.Source,
+            PriceWithVat = h.Fields.Value<double>("price_with_vat")
+        }).ToList();
+    }
 }
 

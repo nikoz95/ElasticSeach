@@ -10,8 +10,76 @@ namespace ElasticSearch.Core.Services;
 public class IndexMappingService(ElasticClient elasticClient)
 {
     /// <summary>
+    /// Create an Index Template
+    /// Index templates allow you to define settings and mappings that will be automatically applied to new indices
+    /// that match a specific name pattern (e.g., "logs-*" or "products-*").
+    /// </summary>
+    /*
+     PUT /_index_template/products_template
+    {
+      "index_patterns": ["products-*"],
+      "template": {
+        "settings": {
+          "number_of_shards": 1,
+          "number_of_replicas": 1,
+          "analysis": {
+            "normalizer": {
+              "lowercase_normalizer": {
+                "type": "custom",
+                "filter": ["lowercase", "asciifolding"]
+              }
+            }
+          }
+        },
+        "mappings": {
+          "properties": {
+            "category": {
+              "type": "keyword",
+              "normalizer": "lowercase_normalizer"
+            }
+          }
+        }
+      }
+    }
+    */
+    public async Task<bool> CreateProductIndexTemplateAsync(string templateName = "products_template")
+    {
+        var response = await elasticClient.Indices.PutTemplateAsync(templateName, t => t
+            .IndexPatterns("products-*")
+            .Settings(s => s
+                .NumberOfShards(1)
+                .NumberOfReplicas(1)
+                .Analysis(a => a
+                    .Normalizers(n => n
+                        .Custom("lowercase_normalizer", cn => cn
+                            .Filters("lowercase", "asciifolding")
+                        )
+                    )
+                )
+            )
+            .Map<Product>(m => m
+                .Properties(p => p
+                    .Keyword(k => k
+                        .Name(n => n.Category)
+                        .Normalizer("lowercase_normalizer")
+                    )
+                )
+            )
+        );
+
+        if (response.IsValid)
+        {
+            Console.WriteLine($"✅ Index Template '{templateName}' created successfully");
+            return true;
+        }
+
+        Console.WriteLine($"❌ Failed to create Index Template: {response.DebugInformation}");
+        return false;
+    }
+
+    /// <summary>
     /// Create index with explicit mappings and settings
-    /// Shows: Multi-field mappings (text + keyword), nested objects, completion suggester
+    /// Shows: Multi-field mappings (text + keyword), nested objects, completion suggester, and NORMALIZERS
     /// </summary>
     /*
      PUT /products-v2
@@ -117,6 +185,12 @@ public class IndexMappingService(ElasticClient elasticClient)
                 .NumberOfReplicas(1)         // each shard has 1 replica (backUp) for high availability
                 .RefreshInterval("5s")       // How often new docs become searchable, because index not shown in real-time when writing
                 .Analysis(a => a
+                    // Custom Normalizer for keyword fields
+                    .Normalizers(n => n
+                        .Custom("lowercase_normalizer", cn => cn
+                            .Filters("lowercase", "asciifolding")
+                        )
+                    )
                     // Custom Analyzer for product names
                     .Analyzers(an => an
                         .Custom("product_name_analyzer", ca => ca
@@ -202,6 +276,7 @@ public class IndexMappingService(ElasticClient elasticClient)
                     // Category: Keyword (exact match, aggregations)
                     .Keyword(k => k
                         .Name(n => n.Category)
+                        .Normalizer("lowercase_normalizer") // Apply normalizer for case-insensitive matching
                         .Fields(f => f
                             .Text(t => t.Name("text"))  // Also searchable as text
                         )
@@ -357,118 +432,234 @@ public class IndexMappingService(ElasticClient elasticClient)
         Console.WriteLine($"❌ Reindex failed: {response.DebugInformation}");
         return false;
     }
+
+    /// <summary>
+    /// Update Alias: Switch alias from old index to new index (Zero-Downtime)
+    /// </summary>
     /*
-       "took": 36,
-      "timed_out": false,
-      "total": 30,
-      "updated": 0,
-      "created": 30,
-      "deleted": 0,
-      "batches": 1, // Number of batches processed (depends on batch size and total documents)
-      "version_conflicts": 0,
-      "noops": 0,
-      "retries": {
-        "bulk": 0, // Number of bulk retries due to transient errors
-        "search": 0 // Number of search retries (if source index is large and needs to scroll)
-      },
-      "throttled_millis": 0,
-      "requests_per_second": -1,
-      "throttled_until_millis": 0,
-      "failures": []
-    }
-     */
-    
-    
-    //compare products-v2 mapping with products mapping to see differences in field types, analyzers, etc.
-     /*
-    GET /products-v2,products/_mapping
-     
-     POST /products-v2/_analyze
+     POST /_aliases
     {
-      "analyzer": "product_name_analyzer",
-      "text": "MacBooks Pro 16 გზაზე მირბის კურდღელი"
+      "actions": [
+        { "remove": { "index": "products-v1", "alias": "products_alias" } },
+        { "add":    { "index": "products-v2", "alias": "products_alias" } }
+      ]
     }
-    
-    GET /products-v2/_explain/2
+    */
+    public async Task<bool> UpdateAliasAsync(string aliasName, string oldIndex, string newIndex)
     {
-      "query": {
-        "match": { "tags": "laptop" }
-      }
+        var response = await elasticClient.Indices.BulkAliasAsync(new BulkAliasRequest
+        {
+            Actions = new List<IAliasAction>
+            {
+                new AliasRemoveAction { Remove = new AliasRemoveOperation { Index = oldIndex, Alias = aliasName } },
+                new AliasAddAction { Add = new AliasAddOperation { Index = newIndex, Alias = aliasName } }
+            }
+        });
+
+        if (response.IsValid)
+        {
+            Console.WriteLine("✅ Alias switched successfully");
+            return true;
+        }
+
+        Console.WriteLine($"❌ Alias update failed: {response.DebugInformation}");
+        return false;
     }
 
-    POST /products-v2/_analyze
+    /// <summary>
+    /// Add Alias to an index
+    /// </summary>
+    public async Task<bool> AddAliasAsync(string indexName, string aliasName)
     {
-      "field": "name",
-      "text": "MacBookS Pro 16 გზაზე მირბის კურდღელი"
-    }
-     
-     POST /products-v2/_analyze
-    {
-      "analyzer": "product_name_analyzer",
-      "text": "Laptops"
-    }
-    
-    response:
-    # POST /products-v2/_analyze 200 OK
-    {
-      "tokens": [
+        var response = await elasticClient.Indices.PutAliasAsync(indexName, aliasName);
+
+        if (response.IsValid)
         {
-          "token": "laptop",
-          "start_offset": 0,
-          "end_offset": 7,
-          "type": "<ALPHANUM>",
-          "position": 0
-        },
-        {
-          "token": "notebook",
-          "start_offset": 0,
-          "end_offset": 7,
-          "type": "SYNONYM",
-          "position": 0
-        },
-        {
-          "token": "comput",
-          "start_offset": 0,
-          "end_offset": 7,
-          "type": "SYNONYM",
-          "position": 0
+            Console.WriteLine($"✅ Alias '{aliasName}' added to index '{indexName}'");
+            return true;
         }
-      ]
+
+        Console.WriteLine($"❌ Failed to add alias: {response.DebugInformation}");
+        return false;
     }
-    # POST /products/_analyze 200 OK
+
+    /// <summary>
+    /// Get indices associated with an alias
+    /// </summary>
+    public async Task<List<string>> GetIndicesForAliasAsync(string aliasName)
     {
-      "tokens": [
+        var response = await elasticClient.Indices.GetAliasAsync(aliasName);
+
+        if (response.IsValid)
         {
-          "token": "laptops",
-          "start_offset": 0,
-          "end_offset": 7,
-          "type": "<ALPHANUM>",
-          "position": 0
+            return response.Indices.Keys.Select(k => k.Name).ToList();
         }
-      ]
+
+        return new List<string>();
     }
-    
-    compare:
-    GET /products,products-v2/_search
+
+    /// <summary>
+    /// Shrink Index: Reduce the number of primary shards in an index
+    /// The index must be marked as read-only before shrinking
+    /// </summary>
+    /*
+    1. Mark read-only:
+    PUT /my_index/_settings
     {
-      "profile": true,
-      "query": {
-        "match": {
-          "name": "laptop"
-        }
+      "settings": {
+        "index.blocks.write": true
       }
     }
-    GET /products-v2/_search
+    
+    2. Shrink:
+    POST /my_index/_shrink/my_index_shrunk
     {
-      "query": {
-        "match": {
-          "tags": {
-            "query": "notebook",
-            "analyzer": "product_name_analyzer"
-          }
-        }
+      "settings": {
+        "index.number_of_shards": 1,
+        "index.number_of_replicas": 1
       }
     }
-     */
+    */
+    public async Task<bool> ShrinkIndexAsync(string sourceIndex, string targetIndex, int targetShards = 1)
+    {
+        // 1. Mark source index as read-only
+        var settingsResponse = await elasticClient.Indices.UpdateSettingsAsync(sourceIndex, s => s
+            .IndexSettings(isettings => isettings
+                .BlocksWrite()
+            )
+        );
+
+        if (!settingsResponse.IsValid)
+        {
+            Console.WriteLine($"❌ Failed to mark index as read-only: {settingsResponse.DebugInformation}");
+            return false;
+        }
+
+        // 2. Perform shrink operation
+        var shrinkResponse = await elasticClient.Indices.ShrinkAsync(sourceIndex, targetIndex, s => s
+            .Settings(st => st
+                .NumberOfShards(targetShards)
+                .NumberOfReplicas(1)
+            )
+        );
+
+        if (shrinkResponse.IsValid)
+        {
+            Console.WriteLine($"✅ Index '{sourceIndex}' shrunk to '{targetIndex}' with {targetShards} shards");
+            return true;
+        }
+
+        Console.WriteLine($"❌ Shrink failed: {shrinkResponse.DebugInformation}");
+        return false;
+    }
+
+    /// <summary>
+    /// Split Index: Increase the number of primary shards
+    /// The index must be marked as read-only before splitting
+    /// </summary>
+    /*
+    POST /my_index/_split/my_index_split
+    {
+      "settings": {
+        "index.number_of_shards": 10
+      }
+    }
+    */
+    public async Task<bool> SplitIndexAsync(string sourceIndex, string targetIndex, int targetShards = 6)
+    {
+        // 1. Mark source index as read-only
+        await elasticClient.Indices.UpdateSettingsAsync(sourceIndex, s => s
+            .IndexSettings(isettings => isettings.BlocksWrite())
+        );
+
+        // 2. Perform split
+        var splitResponse = await elasticClient.Indices.SplitAsync(sourceIndex, targetIndex, s => s
+            .Settings(st => st
+                .NumberOfShards(targetShards)
+            )
+        );
+
+        if (splitResponse.IsValid)
+        {
+            Console.WriteLine($"✅ Index '{sourceIndex}' split to '{targetIndex}' with {targetShards} shards");
+            return true;
+        }
+
+        Console.WriteLine($"❌ Split failed: {splitResponse.DebugInformation}");
+        return false;
+    }
+
+    /// <summary>
+    /// Clone Index: Create an exact copy of an index
+    /// The index must be marked as read-only before cloning
+    /// </summary>
+    public async Task<bool> CloneIndexAsync(string sourceIndex, string targetIndex)
+    {
+        // 1. Mark source index as read-only
+        await elasticClient.Indices.UpdateSettingsAsync(sourceIndex, s => s
+            .IndexSettings(isettings => isettings.BlocksWrite())
+        );
+
+        // 2. Perform clone
+        var cloneResponse = await elasticClient.Indices.CloneAsync(sourceIndex, targetIndex);
+
+        if (cloneResponse.IsValid)
+        {
+            Console.WriteLine($"✅ Index '{sourceIndex}' cloned to '{targetIndex}'");
+            return true;
+        }
+
+        Console.WriteLine($"❌ Clone failed: {cloneResponse.DebugInformation}");
+        return false;
+    }
+
+    /// <summary>
+    /// Force Merge: Optimize index segments for better search performance
+    /// Use only on indices that are no longer being updated
+    /// </summary>
+    /*
+    POST /my_index/_forcemerge?max_num_segments=1
+    */
+    public async Task<bool> ForceMergeAsync(string indexName, int maxSegments = 1)
+    {
+        var response = await elasticClient.Indices.ForceMergeAsync(indexName, f => f
+            .MaxNumSegments(maxSegments)
+        );
+
+        if (response.IsValid)
+        {
+            Console.WriteLine($"✅ Force merge completed for index '{indexName}'");
+            return true;
+        }
+
+        Console.WriteLine($"❌ Force merge failed: {response.DebugInformation}");
+        return false;
+    }
+    /// <summary>
+    /// Update by Query with Script: Bulk update documents matching a query
+    /// Example: Apply a 10% discount to all products in a category
+    /// </summary>
+    public async Task<bool> BulkUpdateWithScriptAsync(string category, double discount)
+    {
+        var response = await elasticClient.UpdateByQueryAsync<Product>(u => u
+            .Index("products")
+            .Query(q => q
+                .Term(t => t.Field(f => f.Category.Suffix("keyword")).Value(category))
+            )
+            .Script(scr => scr
+                .Source("ctx._source.price = ctx._source.price * (1.0 - params.discount)")
+                .Params(p => p.Add("discount", discount))
+            )
+        );
+
+        if (response.IsValid)
+        {
+            Console.WriteLine($"✅ Bulk update finished. Updated: {response.Updated}");
+            return true;
+        }
+
+        Console.WriteLine($"❌ Bulk update failed: {response.DebugInformation}");
+        return false;
+    }
 }
 
