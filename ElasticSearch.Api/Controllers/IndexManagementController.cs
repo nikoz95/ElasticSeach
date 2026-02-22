@@ -210,8 +210,19 @@ public class IndexManagementController : ControllerBase
     /// </summary>
     /// <remarks>
     /// Example:
-    ///     POST /api/indexmanagement/forcemerge?indexName=products-v2&maxSegments=1
+    ///     POST /api/indexmanagement/forcemerge?indexName=products-v2&amp;maxSegments=1
     /// </remarks>
+    [HttpPost("forcemerge")]
+    public async Task<ActionResult<object>> ForceMerge(
+        [FromQuery] string indexName,
+        [FromQuery] int maxSegments = 1)
+    {
+        var ok = await _mappingService.ForceMergeAsync(indexName, maxSegments);
+        return ok
+            ? Ok(new { Success = true, Message = $"Force merge completed for '{indexName}'" })
+            : BadRequest(new { Success = false, Message = "Force merge failed" });
+    }
+
     /// <summary>
     /// Bulk update with script - მასობრივი განახლება სკრიპტით (მაგ. ფასდაკლება კატეგორიაზე)
     /// </summary>

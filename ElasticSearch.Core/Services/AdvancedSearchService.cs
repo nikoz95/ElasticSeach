@@ -55,7 +55,7 @@ public class AdvancedSearchService(ElasticClient elasticClient)
                 {
                     "term": {
                         "tags": {
-                            "value": "featured",
+                            "value": "featured", // Boost products tagged as "featured"
                             "boost": 1.5
                         }
                     }
@@ -399,7 +399,28 @@ public class AdvancedSearchService(ElasticClient elasticClient)
 
         return response.IsValid ? response.Documents.ToList() : [];
     }
-
+    
+    /*
+     GET /products/_search
+{
+  "runtime_mappings": {
+    "is_expensive": {
+      "type": "boolean",
+      "script": {
+        "source": "emit(doc['price'].value > params.threshold)",
+        "params": {
+          "threshold": 100.0
+        }
+      }
+    }
+  },
+  "query": {
+    "term": {
+      "is_expensive": true
+    }
+  }
+}
+     */
     /// <summary>
     /// Search with Runtime Fields: Dynamic fields calculated during query
     /// Example: 'is_expensive' boolean based on price threshold
@@ -424,6 +445,27 @@ public class AdvancedSearchService(ElasticClient elasticClient)
         return response.IsValid ? response.Documents.ToList() : [];
     }
 
+    /*
+     GET /products/_search
+    {
+      "query": {
+        "match": {
+          "name": "iphone"
+        }
+      },
+      "script_fields": {
+        "price_with_vat": {
+          "script": {
+            "source": "doc['price'].value * params.vat",
+            "params": {
+              "vat": 1.18
+            }
+          }
+        }
+      },
+      "_source": ["*"]
+    }
+     */
     /// <summary>
     /// Search with Script Fields: Return calculated values not in index
     /// Example: Calculate price with VAT

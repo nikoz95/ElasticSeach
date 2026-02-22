@@ -82,6 +82,24 @@ public class AdvancedSearchController(AdvancedSearchService advancedSearchServic
     ///     
     /// Response: { "page": 1, "pageSize": 10, "total": 25, "totalPages": 3, "products": [...] }
     /// </remarks>
+    [HttpGet("paginated")]
+    public async Task<ActionResult<object>> PaginatedSearch(
+        [FromQuery] string query,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20)
+    {
+        var (products, total) = await advancedSearchService.PaginatedSearchAsync(query, page, pageSize);
+        
+        return Ok(new
+        {
+            Page = page,
+            PageSize = pageSize,
+            Total = total,
+            TotalPages = (int)Math.Ceiling((double)total / pageSize),
+            Products = products
+        });
+    }
+
     /// <summary>
     /// Script Score search - რანჟირების მორგება სკრიპტით (მაგ. ბუსტი მარაგში მყოფ პროდუქტებზე)
     /// </summary>

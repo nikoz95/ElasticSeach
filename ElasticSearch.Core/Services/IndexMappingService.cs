@@ -466,6 +466,19 @@ public class IndexMappingService(ElasticClient elasticClient)
         return false;
     }
 
+    /*
+     POST /_aliases
+{
+  "actions": [
+    {
+      "add": {
+        "index": "products",
+        "alias": "products_alias"
+      }
+    }
+  ]
+}
+     */
     /// <summary>
     /// Add Alias to an index
     /// </summary>
@@ -482,10 +495,13 @@ public class IndexMappingService(ElasticClient elasticClient)
         Console.WriteLine($"❌ Failed to add alias: {response.DebugInformation}");
         return false;
     }
-
+    
     /// <summary>
     /// Get indices associated with an alias
     /// </summary>
+    /*
+    GET /_alias/products_alias
+    */
     public async Task<List<string>> GetIndicesForAliasAsync(string aliasName)
     {
         var response = await elasticClient.Indices.GetAliasAsync(aliasName);
@@ -507,7 +523,7 @@ public class IndexMappingService(ElasticClient elasticClient)
     PUT /my_index/_settings
     {
       "settings": {
-        "index.blocks.write": true
+        "index.blocks.write": true // Prevents any write operations to the index, ensuring data consistency during the shrink process
       }
     }
     
@@ -558,7 +574,7 @@ public class IndexMappingService(ElasticClient elasticClient)
     /// The index must be marked as read-only before splitting
     /// </summary>
     /*
-    POST /my_index/_split/my_index_split
+    POST /products/_split/my_index_split
     {
       "settings": {
         "index.number_of_shards": 10
@@ -593,6 +609,18 @@ public class IndexMappingService(ElasticClient elasticClient)
     /// Clone Index: Create an exact copy of an index
     /// The index must be marked as read-only before cloning
     /// </summary>
+    /*
+    1. Mark read-only:
+    PUT /products/_settings
+    {
+      "settings": {
+        "index.blocks.write": true
+      }
+    }
+
+    2. Clone:
+    POST /products/_clone/products-v2
+    */
     public async Task<bool> CloneIndexAsync(string sourceIndex, string targetIndex)
     {
         // 1. Mark source index as read-only
@@ -639,6 +667,22 @@ public class IndexMappingService(ElasticClient elasticClient)
     /// Update by Query with Script: Bulk update documents matching a query
     /// Example: Apply a 10% discount to all products in a category
     /// </summary>
+    /*
+    POST /products/_update_by_query
+    {
+      "query": {
+        "term": {
+          "category.keyword": "Electronics"
+        }
+      },
+      "script": {
+        "source": "ctx._source.price = ctx._source.price * (1.0 - params.discount)",
+        "params": {
+          "discount": 0.1
+        }
+      }
+    }
+    */
     public async Task<bool> BulkUpdateWithScriptAsync(string category, double discount)
     {
         var response = await elasticClient.UpdateByQueryAsync<Product>(u => u
