@@ -40,8 +40,6 @@ Elasticsearch provides a comprehensive REST API for all operations:
 ## 📐 4. Data Types and Mappings
 Mappings define how a document and its fields are stored and indexed.
 *   **Core Types:** `text`, `keyword`, `long`, `double`, `boolean`, `date`.
-*   **Complex Types:** `object`, `nested` (preserves relationships between sub-fields).
-*   **Special Types:** `geo_point`, `ip`, `completion`.
 
 ---
 
@@ -137,12 +135,7 @@ Data processing engine: **Input → Filter → Output**.
 
 ---
 
-## 🔄 17. Transforming Data
-*   **Transforms:** Pivot your data into a new entity-centric index (e.g., from "transactions" to "customer_summary").
-
----
-
-## 🌐 18. Clustering and High Availability (HA)
+## 🌐 17. Clustering and High Availability (HA)
 *   **Master Nodes:** Manage cluster state.
 *   **Data Nodes:** Store and search data.
 *   **Replica Strategy:** Replicas are always stored on a different node than their primary shard to ensure HA.
@@ -150,12 +143,12 @@ Data processing engine: **Input → Filter → Output**.
 
 ---
 
-## 🌊 19. Data Streams
+## 🌊 18. Data Streams
 *   **Data Stream:** A way to store append-only time-series data across multiple indices while giving you a single named resource for requests. Ideal for logs and metrics.
 
 ---
 
-## 📊 20. Kibana Metrics & Monitoring
+## 📊 19. Kibana Metrics & Monitoring
 *   **Metrics:** Monitor system performance (CPU, Memory, Disk) using Metricbeat.
 *   **Monitoring:** Internal stack monitoring to check cluster health, node status, and indexing rates.
 *   **Alerting:** Define conditions (e.g., CPU > 90%) and trigger actions (Email, Slack, Webhook).
