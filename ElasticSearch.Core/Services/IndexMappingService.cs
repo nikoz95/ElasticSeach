@@ -83,99 +83,99 @@ public class IndexMappingService(ElasticClient elasticClient)
     /// </summary>
     /*
      PUT /products-v2
-{
-  "settings": {
-    "number_of_shards": 3,
-    "number_of_replicas": 1,
-    "refresh_interval": "5s",
-    "analysis": {
-      "analyzer": {
-        "product_name_analyzer": {
-          "type": "custom",
-          "tokenizer": "standard",
-          "filter": [
-            "lowercase",
-            "stop",
-            "snowball",
-            "product_synonyms"
-          ]
-        },
-        "autocomplete_analyzer": {
-          "type": "custom",
-          "tokenizer": "edge_ngram_tokenizer",
-          "filter": ["lowercase"]
-        }
-      },
-      "tokenizer": {
-        "edge_ngram_tokenizer": {
-          "type": "edge_ngram",
-          "min_gram": 2,
-          "max_gram": 20,
-          "token_chars": ["letter", "digit"]
-        }
-      },
-      "filter": {
-        "product_synonyms": {
-          "type": "synonym",
-          "synonyms": [
-            "laptop, notebook, computer",
-            "phone, mobile, smartphone",
-            "tv, television",
-            "cheap, affordable, budget"
-          ]
-        },
-        "custom_stop": {
-          "type": "stop",
-          "stopwords": ["the", "a", "an", "and", "or"]
-        }
-      }
-    }
-  },
-  "mappings": {
-    "properties": {
-      "id": { "type": "keyword" },
-      "name": {
-        "type": "text",
-        "analyzer": "product_name_analyzer",
-        "search_analyzer": "product_name_analyzer",
-        "fields": {
-          "keyword": { "type": "keyword", "ignore_above": 256 },
-          "autocomplete": {
-            "type": "text",
-            "analyzer": "autocomplete_analyzer",
-            "search_analyzer": "standard"
+    {
+      "settings": {
+        "number_of_shards": 3,
+        "number_of_replicas": 1,
+        "refresh_interval": "5s",
+        "analysis": {
+          "analyzer": {
+            "product_name_analyzer": {
+              "type": "custom",
+              "tokenizer": "standard",
+              "filter": [
+                "lowercase",
+                "stop",
+                "snowball",
+                "product_synonyms"
+              ]
+            },
+            "autocomplete_analyzer": {
+              "type": "custom",
+              "tokenizer": "edge_ngram_tokenizer",
+              "filter": ["lowercase"]
+            }
+          },
+          "tokenizer": {
+            "edge_ngram_tokenizer": {
+              "type": "edge_ngram",
+              "min_gram": 2,
+              "max_gram": 20,
+              "token_chars": ["letter", "digit"]
+            }
+          },
+          "filter": {
+            "product_synonyms": {
+              "type": "synonym",
+              "synonyms": [
+                "laptop, notebook, computer",
+                "phone, mobile, smartphone",
+                "tv, television",
+                "cheap, affordable, budget"
+              ]
+            },
+            "custom_stop": {
+              "type": "stop",
+              "stopwords": ["the", "a", "an", "and", "or"]
+            }
           }
         }
       },
-      "description": { 
-        "type": "text", 
-        "analyzer": "product_name_analyzer",
-        "search_analyzer": "product_name_analyzer"
-      },
-      "price": { "type": "float" },
-      "stock": { "type": "integer" },
-      "category": {
-        "type": "keyword",
-        "fields": {
-          "text": { "type": "text" }
-        }
-      },
-      "tags": { "type": "keyword" },
-      "createdDate": {
-        "type": "date",
-        "format": "strict_date_optional_time||epoch_millis"
-      },
-      "isActive": { "type": "boolean" },
-      "specifications": {
-        "type": "nested",
+      "mappings": {
         "properties": {
-          "brand": { "type": "keyword" },
-          "model": { "type": "keyword" }
+          "id": { "type": "keyword" },
+          "name": {
+            "type": "text",
+            "analyzer": "product_name_analyzer",
+            "search_analyzer": "product_name_analyzer",
+            "fields": {
+              "keyword": { "type": "keyword", "ignore_above": 256 },
+              "autocomplete": {
+                "type": "text",
+                "analyzer": "autocomplete_analyzer",
+                "search_analyzer": "standard"
+              }
+            }
+          },
+          "description": { 
+            "type": "text", 
+            "analyzer": "product_name_analyzer",
+            "search_analyzer": "product_name_analyzer"
+          },
+          "price": { "type": "float" },
+          "stock": { "type": "integer" },
+          "category": {
+            "type": "keyword",
+            "fields": {
+              "text": { "type": "text" }
+            }
+          },
+          "tags": { "type": "keyword" },
+          "createdDate": {
+            "type": "date",
+            "format": "strict_date_optional_time||epoch_millis"
+          },
+          "isActive": { "type": "boolean" },
+          "specifications": {
+            "type": "nested",
+            "properties": {
+              "brand": { "type": "keyword" },
+              "model": { "type": "keyword" }
+            }
+          }
         }
       }
     }
-  }
-}
     */
     public async Task<bool> CreateProductIndexWithMappingsAsync(string indexName = "products-v2")
     {
@@ -468,15 +468,15 @@ public class IndexMappingService(ElasticClient elasticClient)
 
     /*
      POST /_aliases
-{
-  "actions": [
     {
-      "add": {
-        "index": "products",
-        "alias": "products_alias"
-      }
-    }
-  ]
+      "actions": [
+        {
+          "add": {
+            "index": "products",
+            "alias": "products_alias"
+          }
+        }
+      ]
 }
      */
     /// <summary>

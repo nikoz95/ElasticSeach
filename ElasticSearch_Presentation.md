@@ -1,282 +1,191 @@
-# 🚀 Elasticsearch Project Presentation: Fundamental Guide
-
-Practical guide: How to transfer SQL data to Elasticsearch, how the system works "under the hood," and how to build a high-performance search system with .NET.
 
 ---
 
-## 🏗️ 1. Elasticsearch Philosophy and Fundamentals
+# 🛡️ Elasticsearch & Kibana: Enterprise-Level Deep Dive
 
-Elasticsearch is not a conventional database. Its main strength stands on three pillars:
+## 🏗️ 1. Cluster Architecture & Data Distribution
 
-### 🔍 a) Inverted Index
-This is the "heart" of Elasticsearch. Imagine the back pages of a book where words are arranged alphabetically with page numbers indicated.
-*   **SQL:** Searching is like reading the entire book from start to finish (slow).
-*   **Elastic:** The system pre-creates a list: `laptop -> [Document 1, 29, 105]`.
-*   Searching happens directly in this list, providing instant results across millions of records.
+### Sharding Strategies
 
-### 🧩 b) Distributed Architecture (Shards & Replicas)
-*   **Shard:** An index is divided into independent "bricks." When you search, all shards work **in parallel**.
-*   **Replica:** A copy of a shard. If one server fails, the system retrieves data from the copy.
-*   **Distribution:** The `hash(_id) % shards_count` formula determines which shard a document will land in.
+* **Primary Shards:** The horizontal partition of data. Each shard is a self-contained Lucene index. Once set (in regular indices), the number of primary shards cannot be changed without reindexing.
+* **Replica Shards:** Identical copies of primaries. They provide **High Availability** and increase **Search Throughput** by allowing parallel read operations.
+* **The Sizing Rule:** Aim for shard sizes between **20GB and 50GB**. Over-sharding (too many small shards) leads to "Shard Overhead," consuming excessive RAM for cluster state management.
 
-### ⚡ c) Memory Management (RAM & OS Cache)
-*   **In-Memory Buffer:** New data first lands in RAM.
-*   **Filesystem Cache:** `Refresh` (e.g., once every 5 seconds) moves data from RAM into **segments**.
-*   **Segments:** Small files of the inverted index. The more RAM available, the more segments are stored in the OS cache, and searching avoids the disk entirely.
+### Inverted Index & Term Frequency
+
+Elasticsearch doesn't just store text; it tokenizes it.
+
+1. **Analysis:** Text is passed through an analyzer (Character Filter -> Tokenizer -> Token Filter).
+2. **Posting List:** For every unique token, a list of Document IDs is stored.
+3. **TF-IDF / BM25:** Scoring algorithms that determine relevance based on how unique a term is in the index and how frequent it is in a document.
 
 ---
 
-## 🧪 2. Analysis Pipeline
+## 🎭 2. Node Roles (The Functional Hierarchy)
 
-Analysis is the process of "preparing" text before it is written into the inverted index.
+In a production environment, nodes should be dedicated to specific roles to ensure stability:
 
-### ⚙️ How does an Analyzer work?
-1.  **Tokenizer:** Cutting text (e.g.: "MacBook Pro" -> `macbook`, `pro`).
-2.  **Filters:**
-    *   `Lowercase`: Converting letters to lowercase.
-    *   `Stop Words`: Removing unnecessary words (a, the, and).
-    *   `Snowball (Stemming)`: Reducing a word to its root (running -> run).
-    *   `Synonyms`: Replacing synonyms (notebook = laptop).
+* **Master-Eligible Nodes:** The cluster's "Brain." They manage the **Cluster State** (index metadata, shard locations, node health). Use 3 or 5 to maintain Quorum.
+* **Data Nodes (Hot/Warm/Cold):**
+* **Hot:** High CPU and NVMe SSDs for heavy indexing.
+* **Warm/Cold:** High storage capacity for older data.
 
-### 💡 Important Rule:
-Analysis happens on **both sides**:
-*   **Indexing Time:** Optimized tokens are created.
-*   **Search Time:** The user's search term is processed similarly so the "query" (key) fits the "index" (lock).
+
+* **Ingest Nodes:** Pre-process documents before indexing. They execute **Ingest Pipelines** (Grok patterns, GeoIP lookup, script transformations).
+* **Coordinating Nodes:** Act as load balancers that gather results from data nodes and merge them for the user.
 
 ---
 
-## 🛠️ 3. Index Mapping and Settings (Practice)
+## ⏱️ 3. The Mechanics of a Write Request (NRT Architecture)
 
-In our project, we use the `products-v2` index with improved synonyms and pagination.
+Elasticsearch is **Near Real-Time** because it prioritizes write speed over immediate disk persistence:
 
-### 📐 Mapping Example (NEST / JSON)
-```json
-PUT /products-v2
-{
-  "settings": {
-    "number_of_shards": 3,
-    "refresh_interval": "5s",
-    "analysis": {
-      "analyzer": {
-        "product_name_analyzer": {
-          "type": "custom",
-          "tokenizer": "standard",
-          "filter": ["lowercase", "stop", "snowball", "product_synonyms"]
-        }
-      },
-      "filter": {
-        "product_synonyms": {
-          "type": "synonym",
-          "synonyms": ["laptop, notebook, computer", "phone, smartphone"]
-        }
-      }
-    }
-  },
-  "mappings": {
-    "properties": {
-      "name": { 
-        "type": "text", 
-        "analyzer": "product_name_analyzer",
-        "search_analyzer": "product_name_analyzer",
-        "fields": { "keyword": { "type": "keyword" } }
-      },
-      "price": { "type": "float" },
-      "category": { "type": "keyword" }
-    }
-  }
-}
-```
+1. **Memory Buffer:** New data is written to an in-memory buffer and concurrently to the **Translog** (Transaction Log) for crash recovery.
+2. **Refresh Process:** Every second (by default), the buffer is "refreshed" into a **Segment**. This segment is stored in the **Filesystem Cache**, making it searchable.
+3. **Segments & Immutability:** Segments are immutable. Deleting a document only marks it in a `.del` file; it is physically removed only during a **Segment Merge**.
+4. **Flush & Lucene Commit:** Periodically, segments are flushed from the cache to the physical SSD, and the Translog is cleared.
 
 ---
 
-## 📊 4. Ranking and Relevance (_score)
+## 📂 4. Advanced Data Modeling: Mappings & Templates
 
-Elasticsearch doesn't just tell you "if it found it or not," it tells you "how well it matches."
+### Text vs. Keyword
 
-### ⚖️ How is the Score calculated?
-*   **TF (Term Frequency):** The more often a word appears in a document, the higher the score.
-*   **IDF (Inverse Document Frequency):** The rarer a word is in the entire database, the higher its "weight."
-*   **Boost:** Artificial priority. e.g.: `.Field(p => p.Name, boost: 2.0)` means a match in the name is twice as important.
+* **`text`:** Analyzed for full-text search. Cannot be used for sorting or aggregations.
+* **`keyword`:** Not analyzed. Used for exact matches, sorting, and aggregations.
+* **Multi-fields:** Defining a field as both (e.g., `city` as `text` for search and `city.raw` as `keyword` for grouping).
 
----
+### Index Templates & Dynamic Mappings
 
-## 🩺 5. Debugging and Monitoring (Kibana Tools)
-
-When searching doesn't work as you'd like, use these tools:
-
-### 🔎 a) Search Profiler (`"profile": true`)
-This is the "X-ray" of Elasticsearch. It shows the time for each condition:
-*   `build_scorer`: How long the algorithm took to prepare.
-*   `next_doc`: Time to find the next document.
-*   You can see "Bottlenecks" (e.g., Wildcard search, which slows down the process).
-
-### 📐 b) Explain API (`_explain`)
-Answers the question: "Why did this document end up in first place?".
-```json
-GET /products-v2/_explain/29 { "query": { "match": { "name": "laptop" } } }
-```
-In the response, you will see the exact mathematical formula (Boost * IDF * TF).
-
-### 🧪 c) Painless Lab
-Painless is Elasticsearch's scripting language (similar to Java).
-*   Used for dynamic calculations (e.g., calculating a discount during search).
-*   In the Lab, you test safely before inserting it into a real Query.
+* **Composable Templates:** Reusable blocks of settings/mappings that apply to indices matching a pattern (e.g., `telegraf-*`).
+* **Dynamic Templates:** Rules to handle unknown fields (e.g., "treat every field ending in `_num` as a `long`").
 
 ---
 
-## 🔄 6. Synchronization Flow (SQL → Elastic)
+## 📊 5. Kibana: From Discovery to Action
 
-1.  **Extract:** Retrieving data from SQL Server (Hangfire Job).
-2.  **Transform:** Transforming DTOs into a `Product` model (tokenization happens in Elastic).
-3.  **Load:** Batch loading data using the `Bulk API` (e.g., 1000 records in one request).
-4.  **Refresh:** After 5 seconds, the data becomes searchable.
+### Discover & KQL
 
----
+* **KQL (Kibana Query Language):** Simplified syntax (e.g., `response:200 and (clientip:192.* or request:"/api")`).
+* **Filtering:** Use the visual filter bar to build complex boolean queries without code.
 
-## 💡 7. Tips and Best Practices
-*   **Index Templates:** Use templates to automate the setup for new indices matching a pattern.
-*   **Normalizers:** Use for `keyword` fields to enable case-insensitive searching/sorting without tokenization.
-*   **Keyword vs Text:** Use `keyword` for filters/aggregations, `text` for searching.
-*   **Zero-Downtime (Aliases):** Always use an alias (e.g., `products_alias`) in your application code. This allows you to reindex data into a new index (e.g., `products_v2`) and switch the alias instantly without any downtime.
-*   **Performance:** Leave half of the RAM to the operating system for the Filesystem Cache.
-*   **Painless:** Use only when you cannot pre-calculate data (e.g., distance calculation).
+### Dashboards & Lens
+
+* **Lens:** A drag-and-drop UI that automatically chooses the best visualization (Bar, Line, Donut) based on the data type.
+* **TSVB (Time Series Visual Builder):** Advanced time-series analysis with moving averages and math operations.
 
 ---
 
-## 🧱 8. Advanced Index Management (Split, Shrink, Clone, Force Merge)
+## 🛡️ 6. High Availability, Quorum & Split Brain
 
-These operations help you change shard counts and optimize segments without fully reindexing.
+### The Quorum Logic
 
-### 🔹 Shrink (reduce shards)
-- Use when an index is small and too many primary shards waste resources.
-- Steps: set read-only → shrink → optionally unset read-only.
-- API (our project):
-  - POST /api/indexmanagement/shrink?sourceIndex=products-v2&targetIndex=products-v2-shrunk&targetShards=1
-- Raw request (Elasticsearch):
-```json
-PUT /products-v2/_settings { "settings": { "index.blocks.write": true } }
-POST /products-v2/_shrink/products-v2-shrunk { "settings": { "index.number_of_shards": 1, "index.number_of_replicas": 1 } }
-```
+To prevent **Split Brain** (where two parts of a cluster elect two different masters), a majority is required:
 
-### 🔹 Split (increase shards)
-- Use when an index grew larger than planned and needs more primary shards.
-- API (our project):
-  - POST /api/indexmanagement/split?sourceIndex=products-v2&targetIndex=products-v2-split&targetShards=6
-- Raw request:
-```json
-PUT /products-v2/_settings { "settings": { "index.blocks.write": true } }
-POST /products-v2/_split/products-v2-split { "settings": { "index.number_of_shards": 6 } }
-```
+* **Formula:** $\lfloor \text{Master-eligible nodes} / 2 \rfloor + 1$.
+* **3 Nodes:** Can lose 1. **5 Nodes:** Can lose 2.
+* **Cluster Coordination:** v7+ uses a voting configuration that automatically adjusts as nodes are added or removed.
 
-### 🔹 Clone (make an exact copy)
-- For safe experiments or creating a frozen copy.
-- API (our project):
-  - POST /api/indexmanagement/clone?sourceIndex=products-v2&targetIndex=products-v2-clone
-- Raw request:
-```json
-PUT /products-v2/_settings { "settings": { "index.blocks.write": true } }
-POST /products-v2/_clone/products-v2-clone
-```
+### Health Indicators:
 
-### 🔹 Force Merge (segment optimization)
-- Merges many small segments into fewer larger ones; use on static indices.
-- API (our project):
-  - POST /api/indexmanagement/forcemerge?indexName=products-v2&maxSegments=1
-- Raw request:
-```json
-POST /products-v2/_forcemerge?max_num_segments=1
-```
-
-Notes:
-- Split target shard count must be a multiple of the source primary shard count.
-- Shrink target shards must divide the source primary shard count.
-- Ensure the source index is read-only during split/shrink/clone.
+* 🟢 **Green:** All shards (Primary & Replica) are assigned.
+* 🟡 **Yellow:** Primary shards are assigned, but at least one Replica is unassigned (common in single-node clusters).
+* 🔴 **Red:** At least one Primary shard is missing. Search results will be incomplete.
 
 ---
 
-## 📜 9. Elasticsearch Scripting (Painless)
+## 🌊 7. Data Streams & Index Lifecycle Management (ILM)
 
-Elasticsearch Scripting allows you to use custom logic for updates, searches, and data transformation.
+**Data Streams** simplify time-series data by hiding multiple indices behind one name.
 
-### 🔹 Update By Query (Scripted Update)
-- Bulk update documents matching a query using a script.
-- API (our project):
-  - POST /api/indexmanagement/bulk-update-script?category=laptops&discount=0.1
-- Raw request:
-```json
-POST /products/_update_by_query
-{
-  "script": {
-    "source": "ctx._source.price = ctx._source.price * (1.0 - params.discount)",
-    "params": { "discount": 0.1 }
-  },
-  "query": { "term": { "category.keyword": "laptops" } }
-}
-```
+### ILM Phases:
 
-### 🔹 Script Score (Dynamic Ranking)
-- Adjust the relevance score based on dynamic factors (e.g., boosting products in stock).
-- API (our project):
-  - GET /api/advancedsearch/script-score?query=laptop
-- Raw request:
-```json
-POST /products/_search
-{
-  "query": {
-    "script_score": {
-      "query": { "match": { "name": "laptop" } },
-      "script": {
-        "source": "double boost = doc['stock'].size() != 0 && doc['stock'].value > 0 ? 1.2 : 1.0; return _score * boost;"
-      }
-    }
-  }
-}
-```
-
-### 🔹 Script Fields (Calculated Values)
-- Return values that are not stored in the index but are calculated on the fly.
-- API (our project):
-  - GET /api/advancedsearch/script-fields?query=laptop&vatRate=1.18
-- Raw request:
-```json
-POST /products/_search
-{
-  "query": { "match": { "name": "laptop" } },
-  "script_fields": {
-    "price_with_vat": {
-      "script": {
-        "source": "doc['price'].value * params.vat",
-        "params": { "vat": 1.18 }
-      }
-    }
-  }
-}
-```
-
-### 🔹 Runtime Fields (Search-time Mapping)
-- Define and use fields that are calculated during the search without changing the index mapping.
-- API (our project):
-  - GET /api/advancedsearch/runtime-fields?priceThreshold=2000
-- Raw request:
-```json
-POST /products/_search
-{
-  "runtime_mappings": {
-    "is_expensive": {
-      "type": "boolean",
-      "script": {
-        "source": "emit(doc['price'].value > params.threshold)",
-        "params": { "threshold": 2000 }
-      }
-    }
-  },
-  "query": {
-    "term": { "is_expensive": true }
-  }
-}
-```
+1. **Hot Phase:** Active indexing. Rollover happens when the index reaches a size (e.g., 50GB) or age (e.g., 30 days).
+2. **Warm Phase:** Data is still searchable but no longer being updated. **Force Merge** is applied to reduce segments to 1 per shard.
+3. **Cold Phase:** Data is moved to cheaper hardware. Shards may be **Shrunk** to a lower count.
+4. **Frozen/Delete Phase:** Data is either mounted as a searchable snapshot from S3/Azure or deleted permanently.
 
 ---
 
-## ❓ Q&A
-Elasticsearch is a tool that "works harder" during writing to be as lightweight and fast as possible during searching.
+## 🔄 8. Advanced Maintenance Operations
+
+* **Reindex:** Used to change immutable settings (like shard count or field types) by moving data to a new index. Use `_reindex` with a script for on-the-fly data modification.
+* **Shrink:** Reduces the number of primary shards in an existing index (requires the index to be read-only).
+* **Split:** Increases the number of primary shards (requires `number_of_routing_shards` to be set at creation).
+* **Rollup Jobs:** Aggregates old data (e.g., 1-second metrics) into summarized buckets (e.g., hourly averages), saving up to 90% of disk space while keeping historical trends.
+
+---
+
+Building on our previous sections, here is the continuation and deeper technical expansion of the **Enterprise-Level Deep Dive**, covering Query DSL internals, Scripting, and Cluster Tuning.
+
+---
+
+## 🔍 9. Deep Dive into Query DSL (The Search Engine Logic)
+
+In Elasticsearch, searching is not just a "match." It is a complex logical tree that evaluates **Relevance Scores**.
+
+### Boolean Query: The Engine Room
+
+The `bool` query is the primary way to combine multiple conditions. It functions as a logic coordinator:
+
+* **Must:** The clause must appear in matching documents and **contributes to the score** (Equivalent to SQL `AND`).
+* **Filter:** The clause must appear, but **it does not affect the score**. Elasticsearch optimizes this by creating "Bitsets" and caching the results, making it incredibly fast for status codes, dates, and IDs.
+* **Should:** At least one of these clauses must appear (if no `must` is present). If a document matches a `should` clause, its `_score` increases, pushing it higher in the results (Equivalent to SQL `OR`).
+* **Must Not:** The clause must NOT appear in matching documents.
+
+### Full-Text vs. Phrase Search
+
+* **Match Query:** The standard query for full-text search. It analyzes the input string (e.g., "Blue Laptop" searches for both "Blue" and "Laptop").
+* **Match Phrase:** Used for exact sequence matching. It is essential when the proximity of words matters (e.g., "Quick Brown Fox").
+
+---
+
+## 💻 10. Painless Scripting (The Internal Execution Language)
+
+**Painless** is a purpose-built, high-performance language for Elasticsearch. It is syntactically similar to Java but hardened for security.
+
+* **Update by Query:** Allows you to modify millions of documents in a single operation without external processing.
+* *Example:* "If a document is missing the `priority` field, set it to `low` automatically."
+
+
+* **Runtime Fields:** These are "schema-on-read" fields. You can define a new field using a script during search (e.g., calculating `profit = revenue - cost`) without having to reindex your data.
+* **Ingest Pipelines:** Scripts can be used during data ingestion to clean strings, extract substrings, or perform complex mathematical validations.
+
+---
+
+## 🚀 11. Performance Tuning & Production Best Practices
+
+To ensure a cluster performs at scale, engineers must implement the following optimizations:
+
+### Indexing Performance
+
+* **Bulk API:** Never index documents one by one. Use the `_bulk` API to send batches of hundreds or thousands of documents in a single request.
+* **Refresh Interval:** During large data migrations (Initial Load), increase the `refresh_interval` from 1s to 30s or disable it (`-1`). This reduces segment creation overhead significantly.
+* **Disable Replicas for Bulk Loads:** Turn off replicas (`number_of_replicas: 0`) during the data pour, then enable them once the indexing is finished. This cuts the indexing time by nearly 50%.
+
+### Search Performance
+
+* **Avoid Leading Wildcards:** Searching for `*word` is extremely expensive because it forces Elasticsearch to scan every term in the index.
+* **Prefer Filter Context:** Always wrap non-scoring queries (like date ranges or booleans) in a `filter` block to take advantage of the internal cache.
+
+---
+
+## 🛠️ 12. Troubleshooting & Advanced Monitoring
+
+When a cluster enters a "Yellow" or "Red" state, use these surgical tools:
+
+1. **Cluster Health API:** `GET _cluster/health` — Provides the status and the number of unassigned shards.
+2. **Allocation Explain API:** `GET _cluster/allocation/explain` — The "Magic Command." It tells you exactly why a shard is unassigned (e.g., "Disk threshold exceeded" or "Node version mismatch").
+3. **Nodes Stats:** `GET _nodes/stats` — Deep visibility into JVM Heap usage, CPU load, and I/O wait times per node.
+
+---
+
+## 🏁 Final Conclusion: The Ecosystem Perspective
+
+Elasticsearch is more than a database; it is a **Data Management Ecosystem**. Its power lies in its versatility to be three things at once:
+
+1. **A Search Engine:** Lightning-fast full-text search via Inverted Indices.
+2. **An Analytics Platform:** Real-time data aggregation via Kibana.
+3. **A Long-term Archive:** Managed historical storage via ILM and Searchable Snapshots.
+
+---

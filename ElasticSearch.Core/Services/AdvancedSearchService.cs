@@ -12,7 +12,8 @@ public class AdvancedSearchService(ElasticClient elasticClient)
     /// Complex Bool Query: Must + Filter + Should
     /// Example: Search "laptop" in Laptops category under $2000 with boost for featured products
     /// </summary>
-    /*GET /products/_search
+    /*
+     GET /products/_search
     {
         "from": 0,
         "size": 20,
@@ -84,7 +85,8 @@ public class AdvancedSearchService(ElasticClient elasticClient)
                 "description": { "fragment_size": 150, "number_of_fragments": 1 }
             }
         }
-    }*/
+    }
+    */
     public async Task<List<Product>> ComplexBoolSearchAsync(
         string query, 
         string? category = null,
@@ -402,24 +404,24 @@ public class AdvancedSearchService(ElasticClient elasticClient)
     
     /*
      GET /products/_search
-{
-  "runtime_mappings": {
-    "is_expensive": {
-      "type": "boolean",
-      "script": {
-        "source": "emit(doc['price'].value > params.threshold)",
-        "params": {
-          "threshold": 100.0
+    {
+      "runtime_mappings": {
+        "is_expensive": {
+          "type": "boolean",
+          "script": {
+            "source": "emit(doc['price'].value > params.threshold)",
+            "params": {
+              "threshold": 100.0
+            }
+          }
+        }
+      },
+      "query": {
+        "term": {
+          "is_expensive": true
         }
       }
     }
-  },
-  "query": {
-    "term": {
-      "is_expensive": true
-    }
-  }
-}
      */
     /// <summary>
     /// Search with Runtime Fields: Dynamic fields calculated during query

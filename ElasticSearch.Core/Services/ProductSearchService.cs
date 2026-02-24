@@ -5,6 +5,21 @@ namespace ElasticSearch.Core.Services;
 
 public class ProductSearchService(ElasticClient elasticClient)
 {
+    /*
+     GET /products/_search
+    {
+      "query": {
+        "multi_match": {
+          "query": "laptop",
+          "fields": [
+            "name",
+            "description",
+            "category"
+          ]
+        }
+      }
+    }
+     */
     public async Task<List<Product>> SearchProductsAsync(string query)
     {
         var response = await elasticClient.SearchAsync<Product>(s => s
@@ -55,6 +70,19 @@ public class ProductSearchService(ElasticClient elasticClient)
         return response.Documents.ToList();
     }
 
+    /*
+     GET /products/_search
+    {
+      "query": {
+        "range": {
+          "price": {
+            "gte": 100,
+            "lte": 500
+          }
+        }
+      }
+    }
+     */
     public async Task<List<Product>> GetProductsInPriceRangeAsync(decimal minPrice, decimal maxPrice)
     {
         var response = await elasticClient.SearchAsync<Product>(s => s
@@ -76,6 +104,20 @@ public class ProductSearchService(ElasticClient elasticClient)
         return response.Documents.ToList();
     }
 
+    /*
+     GET /products/_search
+    {
+      "size": 0,
+      "aggs": {
+        "categories": {
+          "terms": {
+            "field": "category.keyword",
+            "size": 50
+          }
+        }
+      }
+    }
+     */
     public async Task<Dictionary<string, long>> GetProductCountByCategoryAsync()
     {
         var response = await elasticClient.SearchAsync<Product>(s => s
