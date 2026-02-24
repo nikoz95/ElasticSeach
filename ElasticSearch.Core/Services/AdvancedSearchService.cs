@@ -277,7 +277,7 @@ public class AdvancedSearchService(ElasticClient elasticClient)
                     .Field(f => f.Name)
                     .Query(query)
                     .Fuzziness(Fuzziness.Auto)
-                    .PrefixLength(0)  // First 2 chars must match exactly
+                    .PrefixLength(0)  // First 0 chars must match exactly
                     .MaxExpansions(50) // max check 50 variations words, ex: ["laatap", "labtap", ..., "laptop", "laptap", ...]
                 )
             )
@@ -376,6 +376,27 @@ public class AdvancedSearchService(ElasticClient elasticClient)
 
         return (response.Documents.ToList(), response.Total);
     }
+    /*
+     GET /products/_search
+    {
+      "query": {
+        "script_score": {
+          "query": {
+            "multi_match": {
+              "query": "laptop",
+              "fields": [
+                "name",
+                "description"
+              ]
+            }
+          },
+          "script": {
+            "source": "double boost = doc['stock'].size() != 0 && doc['stock'].value > 0 ? 1.2 : 1.0; return _score * boost;"
+          }
+        }
+      }
+    }
+     */
     /// <summary>
     /// Search with Script Score: Adjust relevance based on dynamic logic
     /// Example: Boost score for products in stock
