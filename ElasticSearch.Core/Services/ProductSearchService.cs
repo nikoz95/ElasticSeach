@@ -10,7 +10,7 @@ public class ProductSearchService(ElasticClient elasticClient)
     {
       "query": {
         "multi_match": {
-          "query": "laptop",
+          "query": "Laptops",
           "fields": [
             "name",
             "description",
