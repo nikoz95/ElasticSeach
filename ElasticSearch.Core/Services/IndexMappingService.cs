@@ -42,6 +42,14 @@ public class IndexMappingService(ElasticClient elasticClient)
       }
     }
     */
+    
+    
+    /*
+     POST products-electronics/_doc/1
+    {
+      "category": "Laptops"
+    }
+     */
     public async Task<bool> CreateProductIndexTemplateAsync(string templateName = "products_template")
     {
         var response = await elasticClient.Indices.PutTemplateAsync(templateName, t => t
@@ -175,6 +183,12 @@ public class IndexMappingService(ElasticClient elasticClient)
           }
         }
       }
+    }
+    
+    POST /products-v2/_analyze
+    {
+      "analyzer": "product_name_analyzer",
+      "text": "The Smart Laptops"
     }
     */
     public async Task<bool> CreateProductIndexWithMappingsAsync(string indexName = "products-v2")
@@ -577,7 +591,7 @@ public class IndexMappingService(ElasticClient elasticClient)
     POST /products/_split/my_index_split
     {
       "settings": {
-        "index.number_of_shards": 10
+        "index.number_of_shards": 6
       }
     }
     */
